@@ -1,0 +1,165 @@
+// ============================================================================
+// Skema database RekamEdu — fondasi Tahap 0.
+// Konvensi: nama TABEL snake_case via @@map; multi-tenant shared schema.
+// SEMUA tabel data tenant WAJIB punya kolom tenantId + @@index([tenantId, ...]).
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enum
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER // platform (tenantId NULL) — bukan bagian tenant mana pun
+  ADMIN // full akses dalam satu tenant
+  KEPALA_SEKOLAH // full akses dalam satu tenant
+  GURU // modul 1, 2, 3 (modul belum diimplementasi — hanya role-nya)
+  PUSTAKAWAN // modul 4 (modul belum diimplementasi — hanya role-nya)
+  TU // modul 5 (modul belum diimplementasi — hanya role-nya)
+}
+
+enum Plan {
+  trial
+  pro
+  custom
+}
+
+enum SubscriptionStatus {
+  active
+  expired
+  suspended
+}
+
+// ---------------------------------------------------------------------------
+// Tenant & identitas
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id               String   @id @default(uuid())
+  kodeSekolah      String   @unique // dipakai saat login: kode_sekolah + username
+  nama             String
+  npsn             String?
+  alamat           String?
+  telepon          String?
+  email            String?
+  logoUrl          String?
+  kepalaSekolah    String?
+  nipKepalaSekolah String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users        User[]
+  subscription Subscription?
+
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  // NULL khusus Owner platform — baris Owner tidak terikat tenant mana pun.
+  tenantId     String?
+  username     String
+  passwordHash String // hash argon2id
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, username])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Langganan (diblokir oleh SubscriptionGuard bila expired/suspended)
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id        String             @id @default(uuid())
+  tenantId  String             @unique
+  plan      Plan
+  status    SubscriptionStatus
+  startedAt DateTime           @default(now())
+  expiresAt DateTime?
+  createdAt DateTime           @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// AI terpusat: API key milik Owner, terenkripsi AES-256-GCM.
+// Key TIDAK PERNAH dikirim ke frontend.
+// ---------------------------------------------------------------------------
+
+model AiModel {
+  id           String   @id @default(uuid())
+  provider     String // mis. "openai"
+  model        String // mis. "gpt-4o-mini"
+  displayName  String
+  encryptedKey String   @db.Text // hasil encrypt() dari src/common/crypto/aes-gcm.ts
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  planLinks PlanAiModel[]
+  usageLogs AiUsageLog[]
+
+  @@unique([provider, model])
+  @@map("ai_models")
+}
+
+model PlanAiModel {
+  id        String @id @default(uuid())
+  plan      Plan
+  aiModelId String
+
+  aiModel AiModel @relation(fields: [aiModelId], references: [id], onDelete: Cascade)
+
+  @@unique([plan, aiModelId])
+  @@index([plan])
+  @@map("plan_ai_models")
+}
+
+model AiUsageLog {
+  id           String   @id @default(uuid())
+  tenantId     String
+  userId       String?
+  aiModelId    String
+  tokensInput  Int      @default(0)
+  tokensOutput Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  aiModel AiModel @relation(fields: [aiModelId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("ai_usage_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String?
+  aksi      String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}

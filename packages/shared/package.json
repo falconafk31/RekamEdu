@@ -1,0 +1,1 @@
+{"description":"Kode bersama (types, constants, utils) untuk monorepo RekamEdu","license":"UNLICENSED","main":"dist/index.js","name":"@rekamedu/shared","private":true,"scripts":{"build":"tsc -p tsconfig.json"},"types":"dist/index.d.ts","version":"0.1.0"}

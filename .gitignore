@@ -1,0 +1,49 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun.lockb
+
+# Build outputs
+dist/
+build/
+out/
+.vuepress/dist
+.nuxt
+
+# NestJS
+apps/api/dist/
+apps/api/logs/
+
+# Vue / Vite
+apps/web/dist/
+apps/web/.vite/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Prisma
+*.db
+*.db-journal
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test & coverage
+coverage/
+.nyc_output/
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo

@@ -1,0 +1,10 @@
+# Caddyfile RekamEdu
+# {$DOMAIN} dibaca dari env var DOMAIN (lihat .env.example)
+
+{$DOMAIN} {
+	# API: /api/* diteruskan ke backend NestJS
+	reverse_proxy /api/* api:3000
+
+	# Sisanya (SPA) dilayani oleh web (nginx) di port 80
+	reverse_proxy web:80
+}
