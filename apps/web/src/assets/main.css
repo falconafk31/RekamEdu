@@ -14,4 +14,92 @@
   .dark {
     color-scheme: dark;
   }
+
+  /* Data numerik memakai tabular figures agar mudah dipindai */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid #047857;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* ---------- Tipografi bantu ---------- */
+  .secondary {
+    @apply text-[0.8125rem] text-slate-500;
+  }
+
+  /* ---------- Tombol ---------- */
+  .btn {
+    @apply inline-flex min-h-[2.5rem] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brandgreen text-white shadow-xs hover:bg-emerald-800 active:bg-emerald-900;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-200 bg-white text-slate-700 shadow-xs hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100;
+  }
+  .btn-ghost {
+    @apply btn min-h-[2.25rem] px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-800;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white shadow-xs hover:bg-rose-700 active:bg-rose-800;
+  }
+  .btn-danger-soft {
+    @apply btn border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100;
+  }
+  .btn-warning {
+    @apply btn bg-amber-500 text-white shadow-xs hover:bg-amber-600;
+  }
+  .btn-library {
+    @apply btn bg-blue-700 text-white shadow-xs hover:bg-blue-800;
+  }
+  .btn-sm {
+    @apply min-h-[2rem] px-3 py-1 text-[13px];
+  }
+  .btn-lg {
+    @apply min-h-[3rem] px-6 py-3 text-[15px];
+  }
+  .btn-icon {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40;
+  }
+  /* Spinner di dalam tombol */
+  .btn .spin {
+    @apply h-4 w-4 animate-spin;
+  }
+
+  /* ---------- Badge (selalu ikon + label, bukan warna saja) ---------- */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap;
+  }
+  .badge-success { @apply badge bg-emerald-50 text-emerald-700 ring-emerald-600/20; }
+  .badge-info { @apply badge bg-sky-50 text-sky-700 ring-sky-600/20; }
+  .badge-warning { @apply badge bg-amber-50 text-amber-800 ring-amber-600/25; }
+  .badge-danger { @apply badge bg-rose-50 text-rose-700 ring-rose-600/20; }
+  .badge-neutral { @apply badge bg-slate-100 text-slate-600 ring-slate-500/10; }
+  .badge-primary { @apply badge bg-emerald-50 text-emerald-700 ring-emerald-600/20; }
+  .badge-library { @apply badge bg-blue-50 text-blue-700 ring-blue-600/20; }
+  .badge-dot { @apply h-1.5 w-1.5 rounded-full bg-current shrink-0; }
+
+  /* ---------- Alert / banner ---------- */
+  .alert {
+    @apply flex items-start gap-3 rounded-xl border p-3.5 text-sm;
+  }
+  .alert-success { @apply alert border-emerald-200 bg-emerald-50 text-emerald-800; }
+  .alert-info { @apply alert border-sky-200 bg-sky-50 text-sky-800; }
+  .alert-warning { @apply alert border-amber-200 bg-amber-50 text-amber-800; }
+  .alert-danger { @apply alert border-rose-200 bg-rose-50 text-rose-800; }
+  .alert-neutral { @apply alert border-slate-200 bg-slate-50 text-slate-600; }
+
+  /* ---------- Empty / error state ---------- */
+  .state-box {
+    @apply flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-12 text-center sm:py-16;
+  }
+  .state-icon {
+    @apply mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-slate-400 shadow-xs ring-1 ring-slate-200;
+  }
 }

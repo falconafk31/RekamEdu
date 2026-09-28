@@ -39,6 +39,46 @@ enum SubscriptionStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Enum Modul 1 (Presensi) & Modul 4 (Perpustakaan) — Tahap 1
+// ---------------------------------------------------------------------------
+
+enum JenisKelamin {
+  L
+  P
+}
+
+enum StatusSiswa {
+  aktif
+  lulus
+  pindah
+  keluar
+}
+
+enum StatusPresensi {
+  Hadir
+  Izin
+  Sakit
+  Alfa
+}
+
+enum StatusHari {
+  Masuk
+  Libur
+}
+
+enum Semester {
+  Ganjil
+  Genap
+}
+
+enum StatusPinjaman {
+  dipinjam
+  dikembalikan
+  terlambat
+  hilang
+}
+
+// ---------------------------------------------------------------------------
 // Tenant & identitas
 // ---------------------------------------------------------------------------
 
@@ -69,6 +109,8 @@ model User {
   username     String
   passwordHash String // hash argon2id
   role         Role
+  nama         String? // nama tampilan (dipakai modul presensi/perpus)
+  kelas        String? // assignment wali kelas untuk role GURU (modul 1)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -153,13 +195,184 @@ model AiUsageLog {
 // ---------------------------------------------------------------------------
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  tenantId  String
-  userId    String?
-  aksi      String
-  detail    String?  @db.Text
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String?
+  aksi        String
+  tabelTerkait String? // nama tabel/entitas terkait (port activity_logs Tahap 1)
+  recordId    String? // id record terkait (port activity_logs Tahap 1)
+  detail      String?  @db.Text
+  createdAt   DateTime @default(now())
 
   @@index([tenantId, createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// MODUL 1 — Presensi Siswa (Tahap 1)
+// Pola tenantId mengikuti AiUsageLog: kolom scalar tanpa relasi balik ke
+// Tenant; isolasi dijamin middleware tenantPrismaMiddleware.
+// ---------------------------------------------------------------------------
+
+model Student {
+  id            String       @id @default(uuid())
+  tenantId      String
+  nisn          String
+  nama          String
+  jk            JenisKelamin?
+  kelas         String?
+  active        Boolean      @default(true)
+  status        StatusSiswa  @default(aktif)
+  tanggalMasuk  DateTime?    @db.Date
+  tanggalKeluar DateTime?    @db.Date
+  keterangan    String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  attendanceLogs AttendanceLog[]
+  classHistories ClassHistory[]
+  bookLoans      BookLoan[]
+  libraryVisits  LibraryVisit[]
+
+  @@unique([tenantId, nisn])
+  @@index([tenantId, kelas])
+  @@index([tenantId, status])
+  @@map("students")
+}
+
+model AttendanceLog {
+  id        String         @id @default(uuid())
+  tenantId  String
+  date      DateTime       @db.Date
+  studentId String
+  status    StatusPresensi
+  kelas     String?
+  guruInput String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date, studentId])
+  @@index([tenantId, date])
+  @@map("attendance_logs")
+}
+
+model AcademicCalendar {
+  tenantId String
+  date     DateTime   @db.Date
+  status   StatusHari @default(Masuk)
+
+  @@id([tenantId, date])
+  @@map("academic_calendar")
+}
+
+model AcademicPeriod {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tahunAjaran String
+  semester    Semester
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, tahunAjaran, semester])
+  @@index([tenantId, isActive])
+  @@map("academic_periods")
+}
+
+model ClassHistory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  studentId   String
+  tahunAjaran String
+  kelas       String?
+  waliKelas   String?
+  status      String?
+  createdAt   DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, studentId, tahunAjaran])
+  @@index([tenantId, tahunAjaran])
+  @@map("class_history")
+}
+
+model TenantSetting {
+  id                String   @id @default(uuid())
+  tenantId          String   @unique
+  namaSekolah       String?
+  alamat            String?
+  kepalaSekolah     String?
+  nipKepalaSekolah  String?
+  logoUrl           String?
+  daftarKelas       Json     @default("[]")
+  kopBaris2         String?
+  kopBaris3         String?
+  kopBaris4         String?
+  kopBaris5         String?
+  namaPerpustakaan  String?
+  hariLiburMingguan Json     @default("[0, 6]")
+  updatedAt         DateTime @updatedAt
+
+  @@map("tenant_settings")
+}
+
+// ---------------------------------------------------------------------------
+// MODUL 4 — Perpustakaan (Tahap 1)
+// ---------------------------------------------------------------------------
+
+model Book {
+  id          String   @id @default(uuid())
+  tenantId    String
+  judul       String
+  pengarang   String?
+  penerbit    String?
+  tahunTerbit String?
+  isbn        String?
+  stok        Int      @default(1)
+  kategori    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  loans BookLoan[]
+
+  @@index([tenantId, kategori])
+  @@index([tenantId, judul])
+  @@map("books")
+}
+
+model BookLoan {
+  id                       String         @id @default(uuid())
+  tenantId                 String
+  bookId                   String
+  studentId                String
+  tanggalPinjam            DateTime       @db.Date
+  tanggalKembaliSeharusnya DateTime       @db.Date
+  tanggalKembaliAktual     DateTime?      @db.Date
+  status                   StatusPinjaman @default(dipinjam)
+  guruInput                String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, studentId])
+  @@index([tenantId, tanggalPinjam])
+  @@map("book_loans")
+}
+
+model LibraryVisit {
+  id        String   @id @default(uuid())
+  tenantId  String
+  studentId String
+  tanggal   DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, tanggal])
+  @@index([tenantId, studentId])
+  @@map("library_visits")
 }

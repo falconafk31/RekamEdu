@@ -28,11 +28,23 @@ import { getTenantContext } from '../tenant/tenant-context';
 // ============================================================================
 
 // Model Prisma yang memiliki kolom tenantId.
+// PENTING: daftar ini WAJIB disinkronkan dengan schema.prisma setiap kali
+// menambah tabel data tenant baru (lihat komentar di atas).
 const TENANT_SCOPED_MODELS = new Set<string>([
   'User',
   'Subscription',
   'AiUsageLog',
   'AuditLog',
+  // Tahap 1 — Modul 1 Presensi & Modul 4 Perpustakaan:
+  'Student',
+  'AttendanceLog',
+  'AcademicCalendar',
+  'AcademicPeriod',
+  'ClassHistory',
+  'TenantSetting',
+  'Book',
+  'BookLoan',
+  'LibraryVisit',
 ]);
 
 // Aksi baca/mutasi massal yang aman di-scope lewat `where`.

@@ -109,11 +109,12 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useSessionStore } from '../stores/session'
+import { useAuthStore } from '../stores/auth'
+import { ApiError } from '../lib/api'
 
 const router = useRouter()
 const route = useRoute()
-const session = useSessionStore()
+const auth = useAuthStore()
 
 const form = reactive({
   kodeSekolah: '',
@@ -130,36 +131,17 @@ async function handleSubmit() {
   errorMessage.value = ''
 
   try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        kodeSekolah: form.kodeSekolah,
-        username: form.username,
-        password: form.password,
-      }),
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => null)
-      errorMessage.value =
-        (data && (data.message || data.error)) ||
-        'Login gagal. Periksa kode sekolah, username, dan kata sandi Anda.'
-      return
-    }
-
-    const data = await res.json().catch(() => ({}))
-    session.login({
-      username: form.username,
-      kodeSekolah: form.kodeSekolah,
-      nama: data?.user?.nama,
-    })
-
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
+    await auth.login(form.kodeSekolah, form.username, form.password)
+    const redirect =
+      typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
     await router.push(redirect)
-  } catch {
-    errorMessage.value =
-      'Tidak dapat menghubungi server. Periksa koneksi internet Anda lalu coba lagi.'
+  } catch (err) {
+    if (err instanceof ApiError) {
+      errorMessage.value = err.message
+    } else {
+      errorMessage.value =
+        'Tidak dapat menghubungi server. Periksa koneksi internet Anda lalu coba lagi.'
+    }
   } finally {
     loading.value = false
   }

@@ -12,6 +12,11 @@ export default {
         brandgreen: '#047857',
         brandcyan: '#0e9db5',
       },
+      boxShadow: {
+        xs: '0 1px 2px 0 rgb(15 23 42 / 0.05)',
+        card: '0 1px 2px 0 rgb(15 23 42 / 0.05)',
+        modal: '0 20px 50px -12px rgb(15 23 42 / 0.25)',
+      },
     },
   },
   plugins: [],
