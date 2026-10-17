@@ -13,6 +13,10 @@ export type { AppRole } from '../types'
 const ROLE_PRESENSI: AppRole[] = ['OWNER', 'ADMIN', 'KEPALA_SEKOLAH', 'GURU']
 const ROLE_PERPUS: AppRole[] = ['OWNER', 'ADMIN', 'KEPALA_SEKOLAH', 'PUSTAKAWAN']
 const ROLE_ADMIN: AppRole[] = ['OWNER', 'ADMIN', 'KEPALA_SEKOLAH']
+const ROLE_JURNAL: AppRole[] = ['OWNER', 'ADMIN', 'KEPALA_SEKOLAH', 'GURU']
+const ROLE_RPP: AppRole[] = ['OWNER', 'ADMIN', 'KEPALA_SEKOLAH', 'GURU']
+const ROLE_SURAT: AppRole[] = ['OWNER', 'ADMIN', 'KEPALA_SEKOLAH', 'TU']
+const ROLE_OWNER: AppRole[] = ['OWNER']
 
 /** true bila role pengguna termasuk dalam daftar role yang diizinkan. */
 export function roleCheck(role: AppRole | null | undefined, allowed: readonly AppRole[]): boolean {
@@ -52,8 +56,9 @@ const routes: RouteRecordRaw[] = [
         name: 'dashboard',
         redirect: () => {
           const auth = useAuthStore()
+          if (auth.isOwner) return '/owner/tenant'
           if (auth.canPerpus && !auth.canPresensi) return '/perpus/dashboard'
-          if (auth.canPresensi || auth.user?.role === 'OWNER') return '/presensi/dashboard'
+          if (auth.canPresensi) return '/presensi/dashboard'
           return '/dashboard/akses-ditolak'
         },
       },
@@ -78,6 +83,20 @@ const routes: RouteRecordRaw[] = [
       { path: '/perpus/kunjungan', name: 'perpus-kunjungan', component: () => import('../views/perpus/KunjunganPerpusView.vue'), meta: { requiresAuth: true, roles: ROLE_PERPUS } },
       { path: '/perpus/rekap', name: 'perpus-rekap', component: () => import('../views/perpus/RekapPerpusView.vue'), meta: { requiresAuth: true, roles: ROLE_PERPUS } },
       { path: '/perpus/kartu', name: 'perpus-kartu', component: () => import('../views/perpus/CetakKartuView.vue'), meta: { requiresAuth: true, roles: ROLE_PERPUS } },
+      // ---- Modul Jurnal (Modul 2) ----
+      { path: '/jurnal', name: 'jurnal', component: () => import('../views/jurnal/JurnalView.vue'), meta: { requiresAuth: true, roles: ROLE_JURNAL } },
+      { path: '/jurnal/rekap', name: 'jurnal-rekap', component: () => import('../views/jurnal/RekapJurnalView.vue'), meta: { requiresAuth: true, roles: ROLE_JURNAL } },
+      // ---- Modul RPP & Perangkat Pembelajaran + AI (Modul 3) ----
+      { path: '/rpp', name: 'rpp', component: () => import('../views/rpp/RppView.vue'), meta: { requiresAuth: true, roles: ROLE_RPP } },
+      { path: '/rpp/generate', name: 'rpp-generate', component: () => import('../views/rpp/RppGenerateView.vue'), meta: { requiresAuth: true, roles: ROLE_RPP } },
+      // ---- Modul Surat (Modul 5) ----
+      { path: '/surat/masuk', name: 'surat-masuk', component: () => import('../views/surat/SuratMasukView.vue'), meta: { requiresAuth: true, roles: ROLE_SURAT } },
+      { path: '/surat/keluar', name: 'surat-keluar', component: () => import('../views/surat/SuratKeluarView.vue'), meta: { requiresAuth: true, roles: ROLE_SURAT } },
+      { path: '/surat/template', name: 'surat-template', component: () => import('../views/surat/TemplateSuratView.vue'), meta: { requiresAuth: true, roles: ROLE_SURAT } },
+      // ---- Dashboard Owner (platform) ----
+      { path: '/owner/tenant', name: 'owner-tenant', component: () => import('../views/owner/OwnerTenantView.vue'), meta: { requiresAuth: true, roles: ROLE_OWNER } },
+      { path: '/owner/ai-model', name: 'owner-ai-model', component: () => import('../views/owner/OwnerAiModelView.vue'), meta: { requiresAuth: true, roles: ROLE_OWNER } },
+      { path: '/owner/penggunaan', name: 'owner-penggunaan', component: () => import('../views/owner/OwnerUsageView.vue'), meta: { requiresAuth: true, roles: ROLE_OWNER } },
       // ---- Fallback role tanpa akses modul ----
       {
         path: '/dashboard/akses-ditolak',

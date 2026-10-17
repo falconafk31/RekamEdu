@@ -3,7 +3,8 @@
 Skema memakai PostgreSQL 16, shared schema. Setiap tabel milik tenant wajib punya
 kolom `tenant_id` dan index komposit `@@index([tenant_id, ...])`
 (lihat `docs/multi-tenancy.md`). Tabel Modul 1 (Presensi) dan Modul 4
-(Perpustakaan) didefinisikan pada **Tahap 1** di bawah; modul 2, 3, 5 menyusul.
+(Perpustakaan) didefinisikan pada **Tahap 1**; tabel Modul 2, 3, 5 didefinisikan pada
+**Tahap 2+3** di bagian bawah dokumen.
 
 ## tenants
 
@@ -306,3 +307,138 @@ guru dibatasi ke `kelas` walinya pada input presensi):
 
 **Auth tambahan:** `GET /api/auth/me` — profil user dari access token
 (dipakai frontend untuk hydrate sesi: `nama`, `kelas`).
+
+# Tahap 2+3 — Modul 2 Jurnal, Modul 3 RPP+AI, Modul 5 Surat
+
+## jurnal
+
+Jurnal harian guru/wali kelas.
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | UUID PK | |
+| `tenant_id` | varchar | isolasi tenant |
+| `tanggal` | date | |
+| `user_id` | varchar | id User guru pembuat |
+| `kelas` | varchar, nullable | |
+| `mapel` | varchar, nullable | mata pelajaran |
+| `materi` | varchar, nullable | |
+| `catatan` | text, nullable | |
+| `kehadiran` | jsonb, nullable | ringkas: `{"hadir":30,"izin":1,"sakit":0,"alfa":0}` |
+| `created_at` / `updated_at` | timestamptz | |
+
+Index: `@@index([tenant_id, tanggal])`, `@@index([tenant_id, user_id, tanggal])`.
+
+## dokumen_pembelajaran
+
+RPP & perangkat pembelajaran (Modul 3). Dibuat manual atau via AI
+(`ai_model_id` terisi bila dibantu AI).
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | UUID PK | |
+| `tenant_id` | varchar | isolasi tenant |
+| `jenis` | enum | `RPP` \| `SILABUS` \| `MODUL_AJAR` \| `LKPD` \| `SOAL` \| `LAINNYA` |
+| `judul` | varchar | |
+| `konten` | text | isi dokumen |
+| `versi` | integer | naik +1 setiap update, default `1` |
+| `status` | enum | `DRAFT` \| `FINAL` |
+| `metadata` | jsonb, nullable | jenjang, fase, mapel, kelas, dsb. |
+| `ai_model_id` | UUID FK → ai_models, nullable | `ON DELETE SET NULL` |
+| `created_by` | varchar, nullable | id User pembuat |
+| `created_at` / `updated_at` | timestamptz | |
+
+Index: `@@index([tenant_id, jenis])`, `@@index([tenant_id, status])`.
+
+## surat
+
+Surat masuk & keluar (Modul 5). Nomor surat dibuat otomatis per tahun
+berjalan via `surat_counter` dalam satu transaksi.
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | UUID PK | |
+| `tenant_id` | varchar | isolasi tenant |
+| `jenis` | enum | `MASUK` \| `KELUAR` |
+| `nomor_surat` | varchar | unik per tenant, mis. `007/SMK-RE/K/III/2026` |
+| `tahun` | integer | tahun penomoran |
+| `nomor_urut` | integer | urutan per tahun+jenis |
+| `tanggal` | date | tanggal surat |
+| `pengirim` | varchar, nullable | |
+| `penerima` | varchar, nullable | |
+| `perihal` | varchar | |
+| `ringkasan` | text, nullable | |
+| `lampiran_url` | varchar, nullable | URL file di MinIO (upload presigned tahap lanjut) |
+| `status` | varchar | default `arsip` |
+| `created_by` | varchar, nullable | id User pencatat |
+| `created_at` / `updated_at` | timestamptz | |
+
+Index: `@@unique([tenant_id, nomor_surat])`,
+`@@unique([tenant_id, tahun, jenis, nomor_urut])`,
+`@@index([tenant_id, jenis, tanggal])`.
+
+## surat_counter
+
+Counter penomoran surat per tenant, per tahun, per jenis.
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `tenant_id` | varchar | bagian PK komposit |
+| `tahun` | integer | bagian PK komposit |
+| `jenis` | enum | bagian PK komposit |
+| `terakhir` | integer | nomor terakhir yang dipakai, default `0` |
+
+PK: `(tenant_id, tahun, jenis)`.
+
+## surat_templates
+
+Template surat yang bisa dipakai ulang (placeholder `{{nomor}}`,
+`{{tanggal}}`, `{{perihal}}`, `{{pengirim}}`, `{{penerima}}`,
+`{{namaSekolah}}`, `{{tahun}}`).
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | UUID PK | |
+| `tenant_id` | varchar | isolasi tenant |
+| `nama` | varchar | nama template |
+| `isi` | text | isi dengan placeholder |
+| `created_at` / `updated_at` | timestamptz | |
+
+Index: `@@index([tenant_id])`.
+
+## Ringkasan endpoint Tahap 2+3
+
+**Modul 2 — `/api/jurnal`** (role: `ADMIN`/`KEPALA_SEKOLAH`/`GURU`;
+guru hanya melihat jurnal miliknya sendiri):
+
+| Endpoint | Keterangan |
+|----------|------------|
+| `GET/POST /` | daftar (filter tanggal/kelas/mapel) + buat |
+| `GET /rekap` | rekap per periode (per guru & per kelas) |
+| `GET/PATCH/DELETE /:id` | detail, ubah, hapus |
+
+**Modul 3 — `/api/rpp`** (role: `ADMIN`/`KEPALA_SEKOLAH`/`GURU`):
+
+| Endpoint | Keterangan |
+|----------|------------|
+| `GET/POST /dokumen`, `GET/PATCH/DELETE /dokumen/:id` | CRUD dokumen (update = versi+1) |
+| `GET /ai/models` | model AI yang diizinkan paket tenant (tanpa API key) |
+| `POST /ai/generate` | generate RPP via AI, streaming SSE, kuota harian per tenant |
+
+**Modul 5 — `/api/surat`** (role: `ADMIN`/`KEPALA_SEKOLAH`/`TU`):
+
+| Endpoint | Keterangan |
+|----------|------------|
+| `GET/POST /` | daftar (filter jenis/pencarian/tanggal) + buat (nomor otomatis) |
+| `GET/PATCH/DELETE /:id` | detail, ubah, hapus |
+| `POST /:id/render` | render surat dengan template (placeholder) |
+| `GET/POST /template`, `GET/PATCH/DELETE /template/:id` | CRUD template surat |
+
+**Owner — `/api/owner`** (role: `OWNER` saja, tanpa subscription guard):
+
+| Endpoint | Keterangan |
+|----------|------------|
+| `GET /tenants`, `GET/PATCH /tenants/:id` | daftar tenant + kelola paket/status manual |
+| `GET/POST /ai-models`, `PATCH/DELETE /ai-models/:id` | CRUD model AI (key terenkripsi, tak pernah ke frontend) |
+| `GET/POST /plan-models`, `DELETE /plan-models/:id` | izin model AI per paket |
+| `GET /usage`, `GET /usage/ringkasan` | agregat pemakaian AI per tenant |

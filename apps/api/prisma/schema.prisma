@@ -79,6 +79,29 @@ enum StatusPinjaman {
 }
 
 // ---------------------------------------------------------------------------
+// Enum Modul 2 (Jurnal), Modul 3 (RPP+AI), Modul 5 (Surat) — Tahap 2+3
+// ---------------------------------------------------------------------------
+
+enum JenisDokumen {
+  RPP
+  SILABUS
+  MODUL_AJAR
+  LKPD
+  SOAL
+  LAINNYA
+}
+
+enum StatusDokumen {
+  DRAFT
+  FINAL
+}
+
+enum JenisSurat {
+  MASUK
+  KELUAR
+}
+
+// ---------------------------------------------------------------------------
 // Tenant & identitas
 // ---------------------------------------------------------------------------
 
@@ -158,6 +181,7 @@ model AiModel {
 
   planLinks PlanAiModel[]
   usageLogs AiUsageLog[]
+  dokumen   DokumenPembelajaran[]
 
   @@unique([provider, model])
   @@map("ai_models")
@@ -375,4 +399,105 @@ model LibraryVisit {
   @@index([tenantId, tanggal])
   @@index([tenantId, studentId])
   @@map("library_visits")
+}
+
+// ---------------------------------------------------------------------------
+// MODUL 2 — Jurnal Harian Guru/Wali Kelas (Tahap 2+3)
+// Pola tenantId mengikuti model Tahap 1: kolom scalar, isolasi dijamin
+// middleware tenantPrismaMiddleware.
+// ---------------------------------------------------------------------------
+
+model Jurnal {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tanggal   DateTime @db.Date
+  userId    String // id User guru pembuat jurnal
+  kelas     String?
+  mapel     String?
+  materi    String?
+  catatan   String?  @db.Text
+  kehadiran Json?    @default("{}") // ringkas: {"hadir":30,"izin":1,"sakit":0,"alfa":0}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, tanggal])
+  @@index([tenantId, userId, tanggal])
+  @@map("jurnal")
+}
+
+// ---------------------------------------------------------------------------
+// MODUL 3 — RPP & Perangkat Pembelajaran + AI (Tahap 2+3)
+// AiModel, PlanAiModel, AiUsageLog sudah ada dari Tahap 0 (AI terpusat).
+// ---------------------------------------------------------------------------
+
+model DokumenPembelajaran {
+  id        String        @id @default(uuid())
+  tenantId  String
+  jenis     JenisDokumen  @default(RPP)
+  judul     String
+  konten    String        @db.Text
+  versi     Int           @default(1)
+  status    StatusDokumen @default(DRAFT)
+  metadata  Json?         @default("{}") // jenjang, fase, mapel, kelas, dsb.
+  aiModelId String? // model AI yang dipakai bila dibuat/dibantu AI
+  createdBy String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  aiModel AiModel? @relation(fields: [aiModelId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, jenis])
+  @@index([tenantId, status])
+  @@map("dokumen_pembelajaran")
+}
+
+// ---------------------------------------------------------------------------
+// MODUL 5 — Surat Masuk & Keluar (Tahap 2+3)
+// Penomoran otomatis via SuratCounter (per tenant, per tahun, per jenis).
+// ---------------------------------------------------------------------------
+
+model Surat {
+  id          String     @id @default(uuid())
+  tenantId    String
+  jenis       JenisSurat
+  nomorSurat  String // mis. "001/SMK-RE/III/2026" — dibuat otomatis
+  tahun       Int
+  nomorUrut   Int
+  tanggal     DateTime   @db.Date
+  pengirim    String?
+  penerima    String?
+  perihal     String
+  ringkasan   String?    @db.Text
+  lampiranUrl String? // URL file di MinIO (upload presigned — tahap lanjut)
+  status      String     @default("arsip")
+  createdBy   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([tenantId, nomorSurat])
+  @@unique([tenantId, tahun, jenis, nomorUrut])
+  @@index([tenantId, jenis, tanggal])
+  @@map("surat")
+}
+
+model SuratCounter {
+  tenantId String
+  tahun    Int
+  jenis    JenisSurat
+  terakhir Int      @default(0)
+
+  @@id([tenantId, tahun, jenis])
+  @@map("surat_counter")
+}
+
+model SuratTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String
+  nama      String
+  isi       String   @db.Text // placeholder: {{nomor}}, {{tanggal}}, {{perihal}}, {{pengirim}}, {{penerima}}, {{namaSekolah}}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("surat_templates")
 }

@@ -21,6 +21,12 @@ export function setApiToken(t: string | null): void {
   accessToken = t
 }
 
+// Getter token untuk kebutuhan khusus (mis. streaming SSE via fetch manual
+// pada fitur generate AI). Jangan menaruh token di URL atau log.
+export function getApiToken(): string | null {
+  return accessToken
+}
+
 export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   body?: unknown

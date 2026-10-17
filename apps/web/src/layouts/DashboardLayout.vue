@@ -114,20 +114,28 @@ import {
   BarChart3,
   BookCopy,
   BookOpen,
+  Bot,
+  Building2,
   Calendar,
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
   FileText,
   Footprints,
+  Gauge,
   History,
   IdCard,
+  Inbox,
   LayoutDashboard,
+  LayoutTemplate,
   Library,
   LogOut,
   Menu,
+  NotebookPen,
   QrCode,
+  Send,
   Settings,
+  Sparkles,
   UserCog,
   Users,
   X,
@@ -173,6 +181,28 @@ const PERPUS_ITEMS: MenuItem[] = [
   { to: '/perpus/kartu', label: 'Cetak Kartu', icon: IdCard },
 ]
 
+const JURNAL_ITEMS: MenuItem[] = [
+  { to: '/jurnal', label: 'Jurnal Harian', icon: NotebookPen },
+  { to: '/jurnal/rekap', label: 'Rekap Jurnal', icon: BarChart3 },
+]
+
+const RPP_ITEMS: MenuItem[] = [
+  { to: '/rpp', label: 'Dokumen', icon: FileText },
+  { to: '/rpp/generate', label: 'Buat dengan AI', icon: Sparkles },
+]
+
+const SURAT_ITEMS: MenuItem[] = [
+  { to: '/surat/masuk', label: 'Surat Masuk', icon: Inbox },
+  { to: '/surat/keluar', label: 'Surat Keluar', icon: Send },
+  { to: '/surat/template', label: 'Template', icon: LayoutTemplate },
+]
+
+const OWNER_ITEMS: MenuItem[] = [
+  { to: '/owner/tenant', label: 'Tenant', icon: Building2 },
+  { to: '/owner/ai-model', label: 'Model AI', icon: Bot },
+  { to: '/owner/penggunaan', label: 'Penggunaan AI', icon: Gauge },
+]
+
 const ROLE_LABELS: Record<AppRole, string> = {
   OWNER: 'Owner',
   ADMIN: 'Admin',
@@ -193,17 +223,29 @@ function isActive(to: string): boolean {
 
 const menuGroups = computed<MenuGroup[]>(() => {
   const groups: MenuGroup[] = []
+  if (auth.isOwner) {
+    groups.push({ title: 'Owner', items: OWNER_ITEMS })
+  }
   if (auth.canPresensi) {
     groups.push({
       title: 'Presensi',
       items: PRESENSI_ITEMS.filter((item) => !item.admin || auth.isAdmin),
     })
   }
+  if (auth.canJurnal) {
+    groups.push({ title: 'Jurnal', items: JURNAL_ITEMS })
+  }
+  if (auth.canRpp) {
+    groups.push({ title: 'RPP & AI', items: RPP_ITEMS })
+  }
   if (auth.canPerpus) {
     groups.push({
       title: 'Perpustakaan',
       items: PERPUS_ITEMS.filter((item) => !item.admin || auth.isAdmin),
     })
+  }
+  if (auth.canSurat) {
+    groups.push({ title: 'Surat', items: SURAT_ITEMS })
   }
   return groups
 })

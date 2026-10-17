@@ -66,6 +66,19 @@ export const useAuthStore = defineStore('auth', {
       const role = state.user?.role
       return role === 'ADMIN' || role === 'KEPALA_SEKOLAH' || role === 'PUSTAKAWAN'
     },
+    isOwner: (state): boolean => state.user?.role === 'OWNER',
+    canJurnal: (state): boolean => {
+      const role = state.user?.role
+      return role === 'ADMIN' || role === 'KEPALA_SEKOLAH' || role === 'GURU'
+    },
+    canRpp: (state): boolean => {
+      const role = state.user?.role
+      return role === 'ADMIN' || role === 'KEPALA_SEKOLAH' || role === 'GURU'
+    },
+    canSurat: (state): boolean => {
+      const role = state.user?.role
+      return role === 'ADMIN' || role === 'KEPALA_SEKOLAH' || role === 'TU'
+    },
   },
   actions: {
     async login(kodeSekolah: string, username: string, password: string): Promise<void> {
