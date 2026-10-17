@@ -36,10 +36,18 @@ export interface NaunganInfo {
   label: string;
   /** Kurikulum aktif yang dipakai template prompt. */
   kurikulum: string;
-  /** Label projek penguatan profil pelajar sesuai naungan. */
-  labelProjekProfil: string;
-  /** Penjelasan singkat projek profil untuk disuntik ke prompt. */
-  deskripsiProjekProfil: string;
+  /**
+   * Pengganti P5/P5-PPRA (dihapus per Permendikdasmen 10/2025):
+   * 8 Dimensi Profil Lulusan.
+   */
+  labelProfilLulusan: string;
+  dimensiProfilLulusan: string[];
+  /** Pendekatan pembelajaran yang didorong regulasi terbaru. */
+  pendekatanPembelajaran: string;
+  /** Instruksi operasional untuk disuntik ke system prompt AI. */
+  deskripsiIntegrasiProfil: string;
+  /** Kekhasan tambahan per naungan (mis. moderasi beragama untuk madrasah). */
+  kekhasanTambahan?: string;
   /** Regulasi acuan yang disuntik ke prompt sesuai naungan. */
   regulasi: ReferensiRegulasi[];
   jenjang: JenjangInfo[];
@@ -60,6 +68,52 @@ const MAPEL_AGAMA_MADRASAH: string[] = [
 export function adalahMapelAgamaMadrasah(mapel: string): boolean {
   return MAPEL_AGAMA_MADRASAH.some(
     (m) => m.toLowerCase() === mapel.trim().toLowerCase(),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 8 Dimensi Profil Lulusan — pengganti P5/Profil Pelajar Pancasila per
+// Permendikdasmen No. 10 Tahun 2025 (mencabut Permendikbudristek 5/2022).
+// ---------------------------------------------------------------------------
+const DIMENSI_PROFIL_LULUSAN: string[] = [
+  'Keimanan dan ketakwaan kepada Tuhan Yang Maha Esa',
+  'Kewargaan',
+  'Penalaran kritis',
+  'Kreativitas',
+  'Kolaborasi',
+  'Kemandirian',
+  'Kesehatan',
+  'Komunikasi',
+];
+
+const PENDEKATAN_PEMBELAJARAN_MENDALAM =
+  'Pembelajaran Mendalam (berkesadaran, bermakna, menggembirakan)';
+
+const INTEGRASI_PROFIL_UMUM =
+  'Integrasikan 8 Dimensi Profil Lulusan ke dalam RPP (bukan sebagai dokumen ' +
+  'terpisah seperti P5 dulu): cantumkan dimensi yang menjadi target pada tiap ' +
+  'komponen — tujuan pembelajaran memuat ranah afektif/psikomotorik yang ' +
+  'merangkum dimensi relevan (mis. [Kolaborasi] pada kerja kelompok, ' +
+  '[Penalaran kritis] pada analisis), dan rubrik asesmen menilai sikap serta ' +
+  'keterampilan sosial selain penguasaan materi. Terapkan pendekatan ' +
+  'Pembelajaran Mendalam: berkesadaran (murid memahami tujuan dan proses ' +
+  'belajarnya), bermakna (materi dikaitkan dengan kehidupan nyata), dan ' +
+  'menggembirakan (suasana belajar positif dan memotivasi). Bila relevan, ' +
+  'sarankan kegiatan kokurikuler (pembelajaran kolaboratif lintas disiplin ' +
+  'ilmu dan/atau Gerakan 7 Kebiasaan Anak Indonesia Hebat) sebagai penguat.';
+
+// ---------------------------------------------------------------------------
+// Mapel baru: Koding dan Kecerdasan Artifisial (KKA) — mapel pilihan mulai
+// kelas 4 SD tahun ajaran 2025/2026 (diarahkan menjadi wajib).
+// ---------------------------------------------------------------------------
+const MAPEL_KKA = 'Koding dan Kecerdasan Artifisial (Pilihan)';
+
+export function adalahMapelKKA(mapel: string): boolean {
+  const rapi = mapel.trim().toLowerCase();
+  return (
+    rapi === MAPEL_KKA.toLowerCase() ||
+    rapi === 'koding dan kecerdasan artifisial' ||
+    rapi === 'koding dan kecerdasan artifisial (kka)'
   );
 }
 
@@ -193,51 +247,51 @@ export const DAFTAR_NAUNGAN: NaunganInfo[] = [
     kode: 'kemendikdasmen',
     label: 'Kemendikdasmen (Sekolah Umum)',
     kurikulum: 'Kurikulum Merdeka',
-    labelProjekProfil: 'P5',
-    deskripsiProjekProfil:
-      'Projek Penguatan Profil Pelajar Pancasila (P5): pembelajaran berbasis ' +
-      'projek lintas disiplin yang menguatkan enam dimensi profil pelajar ' +
-      'Pancasila (beriman dan bertakwa kepada Tuhan YME serta berakhlak mulia, ' +
-      'berkebinekaan global, bergotong royong, mandiri, bernalar kritis, dan ' +
-      'kreatif).',
+    labelProfilLulusan: '8 Dimensi Profil Lulusan',
+    dimensiProfilLulusan: DIMENSI_PROFIL_LULUSAN,
+    pendekatanPembelajaran: PENDEKATAN_PEMBELAJARAN_MENDALAM,
+    deskripsiIntegrasiProfil: INTEGRASI_PROFIL_UMUM,
     regulasi: [
       {
-        nomor: 'Permendikbudristek No. 12 Tahun 2024',
+        nomor: 'Permendikdasmen No. 10 Tahun 2025',
         tentang:
-          'Kurikulum pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, ' +
-          'dan Jenjang Pendidikan Menengah',
+          'Standar Kompetensi Lulusan — 8 Dimensi Profil Lulusan ' +
+          '(menggantikan P5; mencabut Permendikbudristek 5/2022)',
+      },
+      {
+        nomor: 'Permendikdasmen No. 13 Tahun 2025',
+        tentang:
+          'Struktur Kurikulum — kokurikuler (pembelajaran kolaboratif lintas ' +
+          'disiplin ilmu, Gerakan 7 Kebiasaan Anak Indonesia Hebat) dan ' +
+          'pendekatan Pembelajaran Mendalam (perubahan atas ' +
+          'Permendikbudristek 12/2024)',
       },
       {
         nomor: 'Kepmendikbudristek No. 008/M/2022 jo. 262/M/2022',
-        tentang: 'Capaian Pembelajaran (CP) Pendidikan Anak Usia Dini, ' +
-          'Pendidikan Dasar, dan Pendidikan Menengah',
-      },
-      {
-        nomor: 'Kepmendikbudristek No. 009/M/2022',
         tentang:
-          'Dimensi, Elemen, dan Subelemen Profil Pelajar Pancasila pada ' +
-          'Kurikulum Merdeka',
+          'Capaian Pembelajaran (CP) Pendidikan Anak Usia Dini, ' +
+          'Pendidikan Dasar, dan Pendidikan Menengah',
       },
     ],
     jenjang: [
-      { kode: 'SD', nama: 'Sekolah Dasar', kelas: KELAS_DASAR, mapel: MAPEL_SD },
+      { kode: 'SD', nama: 'Sekolah Dasar', kelas: KELAS_DASAR, mapel: [...MAPEL_SD, MAPEL_KKA] },
       {
         kode: 'SMP',
         nama: 'Sekolah Menengah Pertama',
         kelas: KELAS_MENENGAH_PERTAMA,
-        mapel: MAPEL_SMP,
+        mapel: [...MAPEL_SMP, MAPEL_KKA],
       },
       {
         kode: 'SMA',
         nama: 'Sekolah Menengah Atas',
         kelas: KELAS_MENENGAH_ATAS,
-        mapel: [...MAPEL_SMA_DASAR, ...MAPEL_PEMINATAN_SAINTEK, ...MAPEL_PEMINATAN_SOSHUM],
+        mapel: [...MAPEL_SMA_DASAR, ...MAPEL_PEMINATAN_SAINTEK, ...MAPEL_PEMINATAN_SOSHUM, MAPEL_KKA],
       },
       {
         kode: 'SMK',
         nama: 'Sekolah Menengah Kejuruan',
         kelas: KELAS_MENENGAH_ATAS,
-        mapel: MAPEL_SMK_NORMATIF_ADAPTIF,
+        mapel: [...MAPEL_SMK_NORMATIF_ADAPTIF, MAPEL_KKA],
       },
     ],
   },
@@ -245,15 +299,31 @@ export const DAFTAR_NAUNGAN: NaunganInfo[] = [
     kode: 'kemenag',
     label: 'Kemenag (Madrasah)',
     kurikulum: 'Kurikulum Merdeka',
-    labelProjekProfil: 'P5-PPRA',
-    deskripsiProjekProfil:
-      "Projek Penguatan Profil Pelajar Pancasila dan Profil Pelajar Rahmatan " +
-      "lil 'Alamin (P5-PPRA): pembelajaran berbasis projek yang menguatkan " +
-      "profil pelajar Pancasila sekaligus nilai moderasi beragama " +
-      "(berkeadaban, keteladanan, kewarganegaraan dan kebangsaan, mengambil " +
-      'jalan tengah, berimbang, lurus dan tegas, kesetaraan, musyawarah, ' +
-      'toleransi, dinamis dan inovatif).',
+    labelProfilLulusan: '8 Dimensi Profil Lulusan',
+    dimensiProfilLulusan: DIMENSI_PROFIL_LULUSAN,
+    pendekatanPembelajaran: PENDEKATAN_PEMBELAJARAN_MENDALAM,
+    deskripsiIntegrasiProfil: INTEGRASI_PROFIL_UMUM,
+    kekhasanTambahan:
+      'Kekhasan madrasah: P5-PPRA sudah gugur mengikuti SKL nasional, tetapi ' +
+      'tetap kuatkan nilai moderasi beragama (berkeadaban, keteladanan, ' +
+      'kewarganegaraan dan kebangsaan, mengambil jalan tengah, berimbang, ' +
+      'lurus dan tegas, kesetaraan, musyawarah, toleransi, dinamis dan ' +
+      'inovatif) sebagai latar moral dalam setiap aktivitas pembelajaran. ' +
+      'Hindari muatan sekuler murni; selaraskan dengan identitas keagamaan ' +
+      'madrasah (MI/MTs/MA).',
     regulasi: [
+      {
+        nomor: 'Permendikdasmen No. 10 Tahun 2025',
+        tentang:
+          'Standar Kompetensi Lulusan — 8 Dimensi Profil Lulusan ' +
+          '(berlaku nasional, termasuk madrasah; menggantikan P5/P5-PPRA)',
+      },
+      {
+        nomor: 'Permendikdasmen No. 13 Tahun 2025',
+        tentang:
+          'Struktur Kurikulum — kokurikuler dan pendekatan Pembelajaran ' +
+          'Mendalam (perubahan atas Permendikbudristek 12/2024)',
+      },
       {
         nomor: 'KMA 183 Tahun 2019',
         tentang:
@@ -270,9 +340,7 @@ export const DAFTAR_NAUNGAN: NaunganInfo[] = [
       },
       {
         nomor: 'KMA 347 Tahun 2022 jo. KMA 450 Tahun 2024',
-        tentang:
-          'Pedoman Implementasi Kurikulum Merdeka pada Madrasah ' +
-          '(termasuk P5-PPRA)',
+        tentang: 'Pedoman Implementasi Kurikulum Merdeka pada Madrasah',
       },
     ],
     jenjang: [
@@ -280,19 +348,19 @@ export const DAFTAR_NAUNGAN: NaunganInfo[] = [
         kode: 'MI',
         nama: 'Madrasah Ibtidaiyah',
         kelas: KELAS_DASAR,
-        mapel: MAPEL_MI,
+        mapel: [...MAPEL_MI, MAPEL_KKA],
       },
       {
         kode: 'MTs',
         nama: 'Madrasah Tsanawiyah',
         kelas: KELAS_MENENGAH_PERTAMA,
-        mapel: MAPEL_MTS,
+        mapel: [...MAPEL_MTS, MAPEL_KKA],
       },
       {
         kode: 'MA',
         nama: 'Madrasah Aliyah',
         kelas: KELAS_MENENGAH_ATAS,
-        mapel: [...MAPEL_MA_DASAR, ...MAPEL_PEMINATAN_SAINTEK, ...MAPEL_PEMINATAN_SOSHUM, ...MAPEL_PEMINATAN_KEAGAMAAN],
+        mapel: [...MAPEL_MA_DASAR, ...MAPEL_PEMINATAN_SAINTEK, ...MAPEL_PEMINATAN_SOSHUM, ...MAPEL_PEMINATAN_KEAGAMAAN, MAPEL_KKA],
       },
     ],
   },

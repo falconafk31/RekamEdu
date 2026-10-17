@@ -44,6 +44,8 @@ Sumber kebenaran tunggal: `apps/api/src/rpp/ai/master-data.ts`
 - **Naungan**: `kemendikdasmen` (Sekolah Umum: SD/SMP/SMA/SMK) dan
   `kemenag` (Madrasah: MI/MTs/MA). Madrasah menambahkan mapel agama
   (Al-Qur'an Hadits, Akidah Akhlak, Fikih, SKI, Bahasa Arab) sesuai KMA 183/2019.
+- **Mapel baru**: `Koding dan Kecerdasan Artifisial (Pilihan)` tersedia di
+  semua jenjang (mulai kelas 4 SD, TA 2025/2026; diarahkan menjadi wajib).
 - Backend mengekspos `GET /api/rpp/ai/master-data` (ter-guard seperti endpoint
   AI lain); frontend memakai respons ini untuk dropdown berjenjang
   naungan → jenjang → kelas → mapel.
@@ -59,14 +61,25 @@ Builder: `apps/api/src/rpp/ai/rpp-prompt.ts` (`buildRppPrompt`).
 Tuning dilakukan **murni lewat prompt engineering + master data**, tanpa
 fine-tuning model.
 
+**P5/P5-PPRA sudah dihapus** (koreksi 17 Okt 2026, hasil diskusi nvidia):
+digantikan **8 Dimensi Profil Lulusan** + pendekatan **Pembelajaran Mendalam**
+(berkesadaran, bermakna, menggembirakan).
+
 - System prompt menyuntik: naungan, kurikulum, fase, regulasi acuan per naungan,
-  dan kekhasan madrasah (untuk mapel rumpun PAI/Bahasa Arab).
-- Regulasi Kemendikdasmen: Permendikbudristek 12/2024, Kepmendikbudristek
-  008/M/2022 jo. 262/M/2022 (CP), Kepmendikbudristek 009/M/2022 (P5).
-- Regulasi Kemenag: KMA 183/184/185/2019, KMA 347/2022 jo. KMA 450/2024
-  (Kurikulum Merdeka pada madrasah), P5-PPRA (Profil Pelajar Pancasila +
-  Rahmatan lil 'Alamin) sebagai pengganti P5.
+  8 Dimensi Profil Lulusan, prinsip Pembelajaran Mendalam, dan kekhasan
+  madrasah (moderasi beragama; untuk mapel rumpun PAI/Bahasa Arab ditambah
+  kekhasan KMA 183/2019). Untuk mapel KKA disuntik catatan etika digital
+  (keshalehan digital, keamanan data).
+- Regulasi Kemendikdasmen: Permendikdasmen 10/2025 (SKL — 8 Dimensi Profil
+  Lulusan, mencabut Permendikbudristek 5/2022), Permendikdasmen 13/2025
+  (struktur kurikulum: kokurikuler, pembelajaran kolaboratif lintas disiplin
+  ilmu, Gerakan 7 Kebiasaan Anak Indonesia Hebat, Pembelajaran Mendalam),
+  CP 008/M/2022 jo. 262/M/2022.
+- Regulasi Kemenag: SKL nasional 8 Dimensi Profil Lulusan (menggantikan
+  P5-PPRA) + KMA 183/184/185/2019 + KMA 347/2022 jo. 450/2024 (Kurikulum
+  Merdeka pada madrasah).
 - Struktur keluaran: Informasi Umum → **CP → TP → ATP** → Pemahaman Bermakna →
   Pertanyaan Pemantik → Kegiatan Pembelajaran (berdiferensiasi:
-  konten/proses/produk) → Asesmen **formatif & sumatif** (+ KKTP) →
-  Pengayaan & Remedial → Refleksi Guru.
+  konten/proses/produk; penutup mengaitkan dimensi profil lulusan + saran
+  kokurikuler) → Asesmen **formatif & sumatif** (+ KKTP, rubrik mencakup
+  sikap/keterampilan sosial) → Pengayaan & Remedial → Refleksi Guru.

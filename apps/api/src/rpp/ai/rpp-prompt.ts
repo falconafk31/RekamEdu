@@ -5,14 +5,15 @@
 // - jenjang, kelas (+ fase Kurikulum Merdeka yang dipetakan otomatis),
 //   mapel, kurikulum, dan materi pokok.
 // - regulasi acuan + kekhasan bercabang per naungan:
-//   Kemendikdasmen → Permendikbudristek 12/2024, CP 008/M/2022 jo. 262/M/2022,
-//   P5 (Kepmendikbudristek 009/M/2022);
-//   Kemenag → KMA 183/184/185/2019, KMA 347/2022 jo. 450/2024,
-//   P5-PPRA (Profil Pelajar Pancasila + Rahmatan lil 'Alamin), dengan kekhasan
-//   kurikulum PAI & Bahasa Arab madrasah untuk mapel agama.
+//   Kemendikdasmen → Permendikdasmen 10/2025 (8 Dimensi Profil Lulusan),
+//   Permendikdasmen 13/2025 (kokurikuler + Pembelajaran Mendalam),
+//   CP 008/M/2022 jo. 262/M/2022;
+//   Kemenag → SKL nasional 8 Dimensi Profil Lulusan + KMA 183/184/185/2019,
+//   KMA 347/2022 jo. 450/2024, dengan penguatan moderasi beragama.
+//   (P5/P5-PPRA SUDAH DIHAPUS per Permendikdasmen 10/2025.)
 //
 // Struktur keluaran: CP → TP → ATP, pembelajaran berdiferensiasi,
-// integrasi P5/P5-PPRA, asesmen formatif & sumatif (+ KKTP).
+// integrasi 8 Dimensi Profil Lulusan, asesmen formatif & sumatif (+ KKTP).
 //
 // TANPA fine-tuning model — tuning dilakukan murni lewat prompt engineering
 // dan data master.
@@ -21,6 +22,7 @@ import {
   KodeNaungan,
   NaunganInfo,
   adalahMapelAgamaMadrasah,
+  adalahMapelKKA,
   cariNaungan,
   faseUntuk,
 } from './master-data';
@@ -50,7 +52,30 @@ function blokKekhasanMadrasah(mapel: string): string {
     '\nKekhasan madrasah: karena mata pelajaran ini termasuk rumpun PAI/Bahasa ' +
     'Arab madrasah, selaraskan muatan keagamaan dengan kurikulum PAI dan Bahasa ' +
     'Arab pada Madrasah (KMA 183/2019) serta penguatan moderasi beragama ' +
-    "dalam kerangka Profil Pelajar Rahmatan lil 'Alamin."
+    "dalam kerangka 8 Dimensi Profil Lulusan."
+  );
+}
+
+function blokProfilLulusan(naungan: NaunganInfo): string {
+  const daftar = naungan.dimensiProfilLulusan.join('; ');
+  const kekhasan = naungan.kekhasanTambahan
+    ? `\n${naungan.kekhasanTambahan}`
+    : '';
+  return (
+    `${naungan.labelProfilLulusan} — ${naungan.pendekatanPembelajaran}: ` +
+    `${daftar}.\n${naungan.deskripsiIntegrasiProfil}${kekhasan}`
+  );
+}
+
+function blokKKA(mapel: string): string {
+  if (!adalahMapelKKA(mapel)) return '';
+  return (
+    '\nCatatan khusus mapel Koding dan Kecerdasan Artifisial: susun dengan ' +
+    'pendekatan Pembelajaran Mendalam dan utamakan etika digital ' +
+    '(keshalehan digital) — tanggung jawab penggunaan AI secara etis, ' +
+    'keamanan data pribadi, dan dampak lingkungan dari perangkat. Hindari ' +
+    'muatan yang bertentangan dengan nilai moderasi beragama bila konteksnya ' +
+    'madrasah.'
   );
 }
 
@@ -76,14 +101,14 @@ export function buildRppPrompt(input: RppPromptInput): {
     'Tulis SELURUH jawaban dalam Bahasa Indonesia yang baku, jelas, dan siap ' +
     'pakai oleh guru di kelas. Jangan gunakan istilah asing yang tidak perlu. ' +
     'Format jawaban memakai heading dan poin yang rapi dalam Markdown.\n\n' +
-    `${blokRegulasi(naungan)}${blokKekhasanMadrasah(input.mapel)}\n\n` +
+    `${blokRegulasi(naungan)}${blokKekhasanMadrasah(input.mapel)}${blokKKA(input.mapel)}\n\n` +
     'Prinsip yang WAJIB diterapkan:\n' +
     '- Alur perencanaan: Capaian Pembelajaran (CP) → Tujuan Pembelajaran ' +
     '(TP) → Alur Tujuan Pembelajaran (ATP). TP diturunkan dari CP yang ' +
     'relevan; ATP mengurutkan TP secara logis antarpertemuan.\n' +
     '- Pembelajaran berdiferensiasi: rancang diferensiasi konten, proses, ' +
     'dan/atau produk sesuai kesiapan, minat, dan profil belajar murid.\n' +
-    `- ${naungan.deskripsiProjekProfil}\n` +
+    `- ${blokProfilLulusan(naungan)}\n` +
     '- Asesmen: bedakan asesmen FORMATIF (selama proses, untuk umpan balik) ' +
     'dan SUMATIF (akhir pembelajaran), lengkap dengan contoh instrumen dan ' +
     'Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).\n' +
@@ -134,7 +159,9 @@ export function buildRppPrompt(input: RppPromptInput): {
     'tahap: Pendahuluan (maksimal 10 menit, termasuk apersepsi dan motivasi), ' +
     'Inti (langkah rinci sesuai model pembelajaran, cantumkan perkiraan waktu ' +
     'tiap langkah, sertakan bentuk diferensiasi konten/proses/produk), dan ' +
-    `Penutup (refleksi bersama, umpan balik, tindak lanjut, serta kaitan ${naungan.labelProjekProfil} bila relevan).\n` +
+    'Penutup (refleksi bersama, umpan balik, tindak lanjut, serta kaitan ' +
+    'dengan dimensi profil lulusan yang ditargetkan dan saran kegiatan ' +
+    'kokurikuler bila relevan).\n' +
     '8. **Asesmen** — (a) FORMATIF: teknik dan contoh instrumen selama proses ' +
     'pembelajaran; (b) SUMATIF: teknik dan contoh instrumen di akhir ' +
     'pembelajaran; keduanya selaras dengan TP, plus KKTP.\n' +

@@ -7,6 +7,30 @@ dan versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+### Diperbaiki — Tuning AI RPP: P5/P5-PPRA diganti 8 Dimensi Profil Lulusan + Pembelajaran Mendalam (17 Okt 2026)
+
+Koreksi dari Hades + hasil diskusi nvidia: P5 dan P5-PPRA **sudah tidak berlaku**
+(diganti per Permendikdasmen 10/2025).
+
+**Backend (`apps/api/src/rpp/ai/`):**
+- `master-data.ts` — field `labelProjekProfil`/`deskripsiProjekProfil` diganti
+  `labelProfilLulusan` ("8 Dimensi Profil Lulusan"), `dimensiProfilLulusan`
+  (8 item), `pendekatanPembelajaran` (Pembelajaran Mendalam: berkesadaran,
+  bermakna, menggembirakan), `deskripsiIntegrasiProfil` (instruksi operasional
+  integrasi dimensi ke tiap komponen RPP + saran kokurikuler), dan
+  `kekhasanTambahan` untuk madrasah (moderasi beragama sebagai latar moral,
+  P5-PPRA gugur mengikuti SKL nasional). Regulasi Kemendikdasmen diperbarui:
+  Permendikdasmen 10/2025 + 13/2025 (+ CP 008/M/2022 jo. 262/M/2022);
+  Kemenag: SKL 8 dimensi + KMA 183/184/185/2019 + KMA 347/2022 jo. 450/2024.
+  Mapel baru `Koding dan Kecerdasan Artifisial (Pilihan)` ditambahkan ke semua
+  jenjang (mulai kelas 4 SD, TA 2025/2026) + helper `adalahMapelKKA()`.
+- `rpp-prompt.ts` — system prompt menyuntik blok 8 Dimensi Profil Lulusan +
+  Pembelajaran Mendalam (pengganti P5), kekhasan moderasi beragama madrasah,
+  dan catatan khusus KKA (etika/keshalehan digital, keamanan data). Penutup
+  kegiatan pembelajaran mengaitkan dimensi profil lulusan + saran kokurikuler.
+
+**Dokumentasi:** `docs/ai.md` diperbarui (P5/P5-PPRA → 8 Dimensi Profil Lulusan).
+
 ### Ditambahkan — Tuning AI RPP: master data naungan/jenjang/mapel + template prompt bercabang
 
 Tanpa fine-tuning model — murni prompt engineering + master data.
