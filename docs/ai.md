@@ -45,7 +45,10 @@ Sumber kebenaran tunggal: `apps/api/src/rpp/ai/master-data.ts`
   `kemenag` (Madrasah: MI/MTs/MA). Madrasah menambahkan mapel agama
   (Al-Qur'an Hadits, Akidah Akhlak, Fikih, SKI, Bahasa Arab) sesuai KMA 183/2019.
 - **Mapel baru**: `Koding dan Kecerdasan Artifisial (Pilihan)` tersedia di
-  semua jenjang (mulai kelas 4 SD, TA 2025/2026; diarahkan menjadi wajib).
+  semua jenjang, TA 2025/2026 bertahap sesuai kesiapan satuan pendidikan
+  (Kemendikdasmen: Pasal 32A Permendikdasmen 13/2025; Kemenag: KMA 1503/2025 —
+  MI kelas 5-6, MTs VII-IX, MA X + rumpun Teknologi XI-XII; panduan
+  implementasi Kemenag masih draf, pilot MI disiapkan).
 - Backend mengekspos `GET /api/rpp/ai/master-data` (ter-guard seperti endpoint
   AI lain); frontend memakai respons ini untuk dropdown berjenjang
   naungan → jenjang → kelas → mapel.

@@ -103,8 +103,11 @@ const INTEGRASI_PROFIL_UMUM =
   'ilmu dan/atau Gerakan 7 Kebiasaan Anak Indonesia Hebat) sebagai penguat.';
 
 // ---------------------------------------------------------------------------
-// Mapel baru: Koding dan Kecerdasan Artifisial (KKA) — mapel pilihan mulai
-// kelas 4 SD tahun ajaran 2025/2026 (diarahkan menjadi wajib).
+// Mapel baru: Koding dan Kecerdasan Artifisial (KKA) — mapel pilihan,
+// TA 2025/2026 bertahap sesuai kesiapan satuan pendidikan.
+// Kemendikdasmen: Pasal 32A Permendikdasmen 13/2025 (struktur SD: kelas 5-6).
+// Kemenag: KMA 1503/2025 (MI: kelas 5-6; MTs: VII-IX; MA: X + rumpun Teknologi
+// di XI-XII); panduan implementasi Kemenag masih draf, pilot MI disiapkan.
 // ---------------------------------------------------------------------------
 const MAPEL_KKA = 'Koding dan Kecerdasan Artifisial (Pilihan)';
 
@@ -341,6 +344,14 @@ export const DAFTAR_NAUNGAN: NaunganInfo[] = [
       {
         nomor: 'KMA 347 Tahun 2022 jo. KMA 450 Tahun 2024',
         tentang: 'Pedoman Implementasi Kurikulum Merdeka pada Madrasah',
+      },
+      {
+        nomor: 'KMA 1503 Tahun 2025',
+        tentang:
+          'Perubahan atas KMA 450/2024 — mengakomodasi Koding dan ' +
+          'Kecerdasan Artifisial sebagai mapel pilihan madrasah (MI kelas ' +
+          '5-6, MTs VII-IX, MA X + rumpun Teknologi XI-XII), TA 2025/2026 ' +
+          'bertahap',
       },
     ],
     jenjang: [
