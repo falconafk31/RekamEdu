@@ -3,9 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   Plus, Pencil, Trash2, Search, Eye, X, TriangleAlert,
-  FileText, Sparkles, CheckCircle2,
+  FileText, Sparkles, CheckCircle2, Download,
 } from 'lucide-vue-next'
 import { api, ApiError } from '../../lib/api'
+import { unduhDocxDokumen, cetakPdfDokumen } from '../../lib/rpp-export'
 import AppModal from '../../components/ui/AppModal.vue'
 import AppBadge from '../../components/ui/AppBadge.vue'
 import AppPagination from '../../components/ui/AppPagination.vue'
@@ -53,6 +54,8 @@ const saving = ref(false)
 const editing = ref(false)
 const target = ref<Dokumen | null>(null)
 const formError = ref('')
+const mengunduh = ref(false)
+const unduhError = ref('')
 const form = ref({
   id: null as string | null,
   jenis: 'RPP',
@@ -140,7 +143,39 @@ function openEdit(d: Dokumen) {
 
 function openDetail(d: Dokumen) {
   target.value = d
+  unduhError.value = ''
   showDetail.value = true
+}
+
+async function unduhDocx() {
+  if (!target.value || mengunduh.value) return
+  mengunduh.value = true
+  unduhError.value = ''
+  try {
+    await unduhDocxDokumen(target.value.id, target.value.judul)
+  } catch (e) {
+    unduhError.value = pesanError(e)
+  } finally {
+    mengunduh.value = false
+  }
+}
+
+async function unduhPdf() {
+  if (!target.value || mengunduh.value) return
+  mengunduh.value = true
+  unduhError.value = ''
+  try {
+    await cetakPdfDokumen({
+      judul: target.value.judul,
+      jenis: target.value.jenis,
+      konten: target.value.konten,
+      metadata: (target.value.metadata ?? {}) as Record<string, unknown>,
+    })
+  } catch (e) {
+    unduhError.value = pesanError(e)
+  } finally {
+    mengunduh.value = false
+  }
 }
 
 function buildMetadata() {
@@ -423,9 +458,31 @@ onMounted(load)
           <span v-if="metaString(target)" class="text-xs text-slate-500">{{ metaString(target) }}</span>
         </div>
         <div class="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-800">{{ target.konten }}</div>
+        <div v-if="unduhError" class="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+          <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div>{{ unduhError }}</div>
+        </div>
       </div>
       <template #footer>
-        <div class="flex justify-end gap-2">
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            :disabled="mengunduh"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            @click="unduhDocx"
+          >
+            <Download class="h-4 w-4" aria-hidden="true" />
+            {{ mengunduh ? 'Mengunduh…' : 'DOCX' }}
+          </button>
+          <button
+            type="button"
+            :disabled="mengunduh"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            @click="unduhPdf"
+          >
+            <Download class="h-4 w-4" aria-hidden="true" />
+            {{ mengunduh ? 'Mengunduh…' : 'PDF' }}
+          </button>
           <button type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" @click="showDetail = false">Tutup</button>
           <button
             v-if="target"

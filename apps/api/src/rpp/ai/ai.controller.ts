@@ -26,7 +26,7 @@ import { denganTenant } from '../common/tenant-data';
 import { AiProviderService, baseUrlUntukProvider } from './ai-provider.service';
 import { AiQuotaService } from './ai-quota.service';
 import { GenerateRppDto } from './dto/generate-rpp.dto';
-import { buildRppPrompt } from './rpp-prompt';
+import { buildRppPrompt, JenisDokumenAi } from './rpp-prompt';
 import {
   KodeNaungan,
   masterDataUntukKlien,
@@ -129,6 +129,7 @@ export class AiController {
     const { system, user: promptUser } = buildRppPrompt({
       naungan: dto.naungan as KodeNaungan,
       kurikulum: dto.kurikulum,
+      jenis: (dto.jenis as JenisDokumenAi | undefined) ?? 'RPP',
       jenjang: dto.jenjang,
       kelas: dto.kelas,
       mapel: dto.mapel,

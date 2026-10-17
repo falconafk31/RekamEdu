@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
   Query,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response as ExpressResponse } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/guards/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -41,6 +44,32 @@ export class DokumenController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.dokumenService.findOne(id);
+  }
+
+  // Unduh dokumen sebagai DOCX agar bisa diedit ulang.
+  // Contoh: GET /rpp/dokumen/:id/export?format=docx
+  @Get(':id/export')
+  async export(
+    @Param('id') id: string,
+    @Query('format') format: string | undefined,
+    @Res() res: ExpressResponse,
+  ): Promise<void> {
+    if (format !== 'docx') {
+      throw new BadRequestException(
+        'Format tidak didukung. Gunakan format=docx.',
+      );
+    }
+    const { buffer, namaFile } = await this.dokumenService.exportDocx(id);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${namaFile}"; filename*=UTF-8''${encodeURIComponent(namaFile)}`,
+    );
+    res.setHeader('Content-Length', String(buffer.length));
+    res.send(buffer);
   }
 
   @Patch(':id')

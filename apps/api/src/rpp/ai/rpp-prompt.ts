@@ -1,4 +1,8 @@
-// Template prompt penyusunan RPP / Modul Ajar (Bahasa Indonesia).
+// Template prompt penyusun dokumen pembelajaran (Bahasa Indonesia).
+// Dua template dengan SATU mesin inti yang sama (tujuan–langkah–asesmen):
+// - RPP: format rencana per pertemuan (turunan silabus/KD).
+// - MODUL_AJAR: format Kurikulum Merdeka per unit/topik — Informasi Umum,
+//   Komponen Inti, Lampiran (Kepmendikbudristek 56/M/2022 + Panduan BSKAP).
 //
 // Builder menyuntik konteks dari master data (master-data.ts):
 // - naungan: 'kemendikdasmen' (sekolah umum) | 'kemenag' (madrasah)
@@ -27,9 +31,17 @@ import {
   faseUntuk,
 } from './master-data';
 
+/** Jenis dokumen yang disusun AI. RPP = format rencana per pertemuan
+ * (turunan silabus/KD, era K13 yang masih dipakai); MODUL_AJAR = format
+ * Kurikulum Merdeka (turunan fase/CP/ATP per unit/topik, Kepmendikbudristek
+ * 56/M/2022). Keduanya memakai SATU mesin inti yang sama (tujuan–langkah–
+ * asesmen), hanya struktur keluarannya yang dibedakan. */
+export type JenisDokumenAi = 'RPP' | 'MODUL_AJAR';
+
 export interface RppPromptInput {
   naungan: KodeNaungan;
   kurikulum?: string; // default: kurikulum aktif dari master data
+  jenis?: JenisDokumenAi; // default: 'RPP'
   jenjang: string; // mis. SD, MI, SMP
   kelas: string; // mis. "4", "VII", "X"
   mapel: string; // mata pelajaran (dari master data)
@@ -64,6 +76,16 @@ function blokProfilLulusan(naungan: NaunganInfo): string {
   return (
     `${naungan.labelProfilLulusan} — ${naungan.pendekatanPembelajaran}: ` +
     `${daftar}.\n${naungan.deskripsiIntegrasiProfil}${kekhasan}`
+  );
+}
+
+function blokKbcMadrasah(naungan: NaunganInfo): string {
+  if (naungan.kode !== 'kemenag') return '';
+  return (
+    ' Karena konteksnya madrasah, cantumkan Topik Panca Cinta (Kurikulum ' +
+    'Berbasis Cinta — pilih yang paling relevan: Cinta Allah dan Rasul-Nya, ' +
+    'Cinta Ilmu, Cinta Alam/Lingkungan, Cinta Diri dan Sesama Manusia, atau ' +
+    'Cinta Tanah Air) yang diintegrasikan ke dalam pembelajaran.'
   );
 }
 
@@ -136,15 +158,37 @@ export function buildRppPrompt(input: RppPromptInput): {
     barisKonteks.push(`- Catatan tambahan dari guru: ${input.tujuanTambahan.trim()}`);
   }
 
+  const jenis: JenisDokumenAi = input.jenis ?? 'RPP';
+  const labelJenis = jenis === 'MODUL_AJAR' ? 'Modul Ajar' : 'RPP';
+
   const user =
-    'Susun RPP / Modul Ajar lengkap berdasarkan konteks berikut:\n\n' +
+    `Susun ${labelJenis} lengkap berdasarkan konteks berikut:\n\n` +
     'Konteks pembelajaran:\n' +
     barisKonteks.join('\n') +
-    '\n\nSusun dengan komponen berikut, berurutan:\n\n' +
+    '\n\n' +
+    (jenis === 'MODUL_AJAR'
+      ? strukturModulAjar(naungan, fase, mapelAgamaMadrasah)
+      : strukturRpp(naungan, fase, mapelAgamaMadrasah)) +
+    '\n\nTutup dokumen dengan bagian **Dasar Hukum** yang mencantumkan ' +
+    'regulasi acuan di atas secara ringkas.';
+
+  return { system, user };
+}
+
+// ---------------------------------------------------------------------------
+// Template RPP — format rencana per pertemuan (turunan silabus/KD).
+// ---------------------------------------------------------------------------
+function strukturRpp(
+  naungan: NaunganInfo,
+  fase: string | undefined,
+  mapelAgamaMadrasah: boolean,
+): string {
+  return (
+    'Susun dengan komponen berikut, berurutan:\n\n' +
     '1. **Informasi Umum** — identitas satuan pendidikan (tulis "[Nama ' +
     `${mapelAgamaMadrasah ? 'Madrasah' : 'Sekolah'}]"), naungan, jenjang/kelas` +
     `${fase ? `/fase ${fase}` : ''}, mata pelajaran, materi pokok, dan alokasi ` +
-    'waktu.\n' +
+    `waktu.${blokKbcMadrasah(naungan)}\n` +
     '2. **Capaian Pembelajaran (CP)** — tulis CP yang relevan dengan materi ' +
     'pada fase ini (ringkas, sesuai regulasi acuan).\n' +
     '3. **Tujuan Pembelajaran (TP)** — 2-4 tujuan yang spesifik, terukur, ' +
@@ -168,7 +212,52 @@ export function buildRppPrompt(input: RppPromptInput): {
     '9. **Pengayaan dan Remedial** — kegiatan tindak lanjut untuk murid yang ' +
     'sudah tuntas dan yang belum tuntas (sesuai KKTP).\n' +
     '10. **Refleksi Guru** — 3 pertanyaan refleksi untuk evaluasi diri guru ' +
-    'setelah mengajar.';
+    'setelah mengajar.'
+  );
+}
 
-  return { system, user };
+// ---------------------------------------------------------------------------
+// Template Modul Ajar — format Kurikulum Merdeka per unit/topik
+// (Kepmendikbudristek 56/M/2022 + Panduan BSKAP): Informasi Umum,
+// Komponen Inti, Lampiran.
+// ---------------------------------------------------------------------------
+function strukturModulAjar(
+  naungan: NaunganInfo,
+  fase: string | undefined,
+  mapelAgamaMadrasah: boolean,
+): string {
+  return (
+    'Susun dengan struktur berikut, berurutan:\n\n' +
+    'A. **INFORMASI UMUM**\n' +
+    '- Identitas: nama satuan pendidikan (tulis "[Nama ' +
+    `${mapelAgamaMadrasah ? 'Madrasah' : 'Sekolah'}]"), naungan, jenjang/kelas` +
+    `${fase ? `/fase ${fase}` : ''}, mata pelajaran, materi pokok/unit topik, ` +
+    'dan alokasi waktu.\n' +
+    '- Kompetensi awal yang dibutuhkan murid sebelum mengikuti pembelajaran.\n' +
+    '- Profil murid / target peserta didik (karakteristik umum dan kebutuhan ' +
+    'khusus bila ada).\n' +
+    '- Sarana dan prasarana yang diperlukan.\n' +
+    '- Model pembelajaran yang dipakai.' +
+    `${blokKbcMadrasah(naungan)}\n\n` +
+    'B. **KOMPONEN INTI**\n' +
+    '1. **Tujuan Pembelajaran (TP)** — 2-4 tujuan spesifik terukur yang ' +
+    'diturunkan dari CP unit/topik ini, memuat ranah afektif/psikomotorik ' +
+    'yang merangkum dimensi profil lulusan relevan.\n' +
+    '2. **Asesmen** — (a) FORMATIF beserta contoh instrumen; (b) SUMATIF ' +
+    'beserta contoh instrumen; selaras TP, plus KKTP. Rubrik menilai sikap ' +
+    'dan keterampilan sosial selain penguasaan materi.\n' +
+    '3. **Pemahaman Bermakna** — 1-2 kalimat inti.\n' +
+    '4. **Pertanyaan Pemantik** — 2-3 pertanyaan pembuka.\n' +
+    '5. **Kegiatan Pembelajaran** — Pendahuluan (maks 10 menit), Inti ' +
+    '(langkah rinci + perkiraan waktu + diferensiasi konten/proses/produk), ' +
+    'Penutup (refleksi, umpan balik, kaitan dimensi profil lulusan yang ' +
+    'ditargetkan, saran kokurikuler bila relevan).\n' +
+    '6. **Refleksi** — panduan refleksi untuk murid dan 3 pertanyaan refleksi ' +
+    'untuk guru.\n\n' +
+    'C. **LAMPIRAN**\n' +
+    '- Lembar Kerja Peserta Didik (LKPD) bila relevan.\n' +
+    '- Pengayaan dan remedial (tindak lanjut sesuai KKTP).\n' +
+    '- Bahan bacaan guru dan murid.\n' +
+    '- Glosarium dan daftar pustaka.'
+  );
 }

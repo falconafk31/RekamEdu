@@ -3,9 +3,10 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   ArrowLeft, Sparkles, Save, TriangleAlert,
-  CircleCheck, LoaderCircle, Square,
+  CircleCheck, LoaderCircle, Square, Download,
 } from 'lucide-vue-next'
 import { api, ApiError, getApiToken } from '../../lib/api'
+import { unduhDocxDokumen, cetakPdfDokumen, labelJenisDokumen } from '../../lib/rpp-export'
 
 function pesanError(e: unknown): string {
   if (e instanceof ApiError) return e.message
@@ -55,12 +56,18 @@ const MODEL_PEMBELAJARAN = [
   'Ceramah Interaktif',
 ]
 
+const JENIS_DOKUMEN_AI = [
+  { kode: 'RPP', label: 'RPP' },
+  { kode: 'MODUL_AJAR', label: 'Modul Ajar' },
+]
+
 const models = ref<AiModel[]>([])
 const loadingModels = ref(false)
 const master = ref<NaunganMaster[]>([])
 const loadingMaster = ref(false)
 
 const aiModelId = ref('')
+const jenisDokumen = ref('RPP')
 const naungan = ref('')
 const jenjang = ref('')
 const kelas = ref('')
@@ -81,6 +88,11 @@ const judulSimpan = ref('')
 const saving = ref(false)
 const saveError = ref('')
 const tersimpan = ref(false)
+const dokumenId = ref('')
+const mengunduh = ref(false)
+const unduhError = ref('')
+
+const labelJenis = computed(() => labelJenisDokumen(jenisDokumen.value))
 
 const naunganAktif = computed(() => master.value.find((n) => n.kode === naungan.value))
 const daftarJenjang = computed(() => naunganAktif.value?.jenjang ?? [])
@@ -93,6 +105,13 @@ const daftarMapel = computed(
 const kurikulumAktif = computed(() => naunganAktif.value?.kurikulum ?? '')
 
 // Dropdown berjenjang: ganti induk → reset turunan.
+watch(jenisDokumen, () => {
+  // Draf yang sudah tersusun milik jenis lain → buang agar tidak tertukar.
+  hasil.value = ''
+  selesai.value = false
+  tersimpan.value = false
+  dokumenId.value = ''
+})
 watch(naungan, () => {
   jenjang.value = ''
   kelas.value = ''
@@ -172,9 +191,11 @@ async function generate() {
   selesai.value = false
   tokenInfo.value = ''
   tersimpan.value = false
+  dokumenId.value = ''
+  unduhError.value = ''
   saveError.value = ''
   generating.value = true
-  judulSimpan.value = `RPP ${mapel.value} - ${materiPokok.value.trim()}`.slice(0, 200)
+  judulSimpan.value = `${labelJenis.value} ${mapel.value} - ${materiPokok.value.trim()}`.slice(0, 200)
   aborter.value = new AbortController()
 
   try {
@@ -186,6 +207,7 @@ async function generate() {
       },
       body: JSON.stringify({
         aiModelId: aiModelId.value,
+        jenis: jenisDokumen.value,
         naungan: naungan.value,
         kurikulum: kurikulumAktif.value || undefined,
         jenjang: jenjang.value,
@@ -247,10 +269,10 @@ async function simpan() {
   saving.value = true
   saveError.value = ''
   try {
-    await api('/rpp/dokumen', {
+    const dibuat = await api<{ id: string }>('/rpp/dokumen', {
       method: 'POST',
       body: {
-        jenis: 'RPP',
+        jenis: jenisDokumen.value,
         judul: judulSimpan.value.trim(),
         konten: hasil.value,
         status: 'DRAFT',
@@ -266,11 +288,47 @@ async function simpan() {
         aiModelId: aiModelId.value,
       },
     })
+    dokumenId.value = dibuat.id
     tersimpan.value = true
   } catch (e) {
     saveError.value = pesanError(e)
   } finally {
     saving.value = false
+  }
+}
+
+async function unduhDocx() {
+  if (!dokumenId.value || mengunduh.value) return
+  mengunduh.value = true
+  unduhError.value = ''
+  try {
+    await unduhDocxDokumen(dokumenId.value, judulSimpan.value.trim() || 'dokumen')
+  } catch (e) {
+    unduhError.value = pesanError(e)
+  } finally {
+    mengunduh.value = false
+  }
+}
+
+async function unduhPdf() {
+  if (mengunduh.value || !hasil.value.trim()) return
+  mengunduh.value = true
+  unduhError.value = ''
+  try {
+    await cetakPdfDokumen({
+      judul: judulSimpan.value.trim() || `${labelJenis.value} ${mapel.value}`,
+      jenis: jenisDokumen.value,
+      konten: hasil.value,
+      metadata: {
+        jenjang: jenjang.value,
+        kelas: kelas.value,
+        mapel: mapel.value,
+      },
+    })
+  } catch (e) {
+    unduhError.value = pesanError(e)
+  } finally {
+    mengunduh.value = false
   }
 }
 
@@ -292,8 +350,8 @@ onMounted(() => {
         <ArrowLeft class="h-5 w-5" aria-hidden="true" />
       </RouterLink>
       <div>
-        <h1 class="text-xl font-bold text-slate-900">Buat RPP dengan AI</h1>
-        <p class="mt-0.5 text-sm text-slate-500">Isi parameter pembelajaran, AI menyusun draf RPP secara langsung.</p>
+        <h1 class="text-xl font-bold text-slate-900">Buat RPP / Modul Ajar dengan AI</h1>
+        <p class="mt-0.5 text-sm text-slate-500">Isi parameter pembelajaran, AI menyusun draf secara langsung.</p>
       </div>
     </div>
 
@@ -307,6 +365,13 @@ onMounted(() => {
     <div class="rounded-xl border border-slate-200 bg-white p-4">
       <h2 class="mb-3 text-sm font-bold text-slate-900">Parameter Pembelajaran</h2>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label for="g-jenis" class="mb-1 block text-xs font-semibold text-slate-600">Jenis dokumen *</label>
+          <select id="g-jenis" v-model="jenisDokumen" :disabled="generating" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
+            <option v-for="j in JENIS_DOKUMEN_AI" :key="j.kode" :value="j.kode">{{ j.label }}</option>
+          </select>
+          <p class="mt-1 text-xs text-slate-400">RPP = rencana per pertemuan · Modul Ajar = format Kurikulum Merdeka per unit/topik.</p>
+        </div>
         <div>
           <label for="g-model" class="mb-1 block text-xs font-semibold text-slate-600">Model AI *</label>
           <select id="g-model" v-model="aiModelId" :disabled="generating || loadingModels" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
@@ -377,7 +442,7 @@ onMounted(() => {
           @click="generate"
         >
           <Sparkles class="h-4 w-4" aria-hidden="true" />
-          Susun RPP
+          Susun {{ labelJenis }}
         </button>
         <button
           v-else
@@ -394,7 +459,7 @@ onMounted(() => {
     <!-- Hasil streaming -->
     <div v-if="generating || hasil" class="rounded-xl border border-slate-200 bg-white p-4">
       <div class="mb-2 flex items-center justify-between">
-        <h2 class="text-sm font-bold text-slate-900">Draf RPP</h2>
+        <h2 class="text-sm font-bold text-slate-900">Draf {{ labelJenis }}</h2>
         <span v-if="generating" class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700" aria-live="polite">
           <LoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           Menyusun…
@@ -425,16 +490,42 @@ onMounted(() => {
           </button>
         </div>
       </div>
-      <div v-if="tersimpan" class="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
-        <CircleCheck class="h-4 w-4 shrink-0" aria-hidden="true" />
-        <div class="flex-1">Dokumen tersimpan sebagai draf.</div>
-        <RouterLink to="/rpp" class="font-semibold underline">Lihat daftar dokumen</RouterLink>
+      <div v-if="tersimpan" class="mt-3 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+        <div class="flex items-center gap-2">
+          <CircleCheck class="h-4 w-4 shrink-0" aria-hidden="true" />
+          <div class="flex-1">Dokumen tersimpan sebagai draf.</div>
+          <RouterLink to="/rpp" class="font-semibold underline">Lihat daftar dokumen</RouterLink>
+        </div>
+        <div v-if="unduhError" class="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+          <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div>{{ unduhError }}</div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            :disabled="mengunduh"
+            class="inline-flex items-center gap-2 rounded-lg border border-emerald-600 bg-white px-3 py-1.5 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+            @click="unduhDocx"
+          >
+            <Download class="h-4 w-4" aria-hidden="true" />
+            {{ mengunduh ? 'Mengunduh…' : 'Unduh DOCX (bisa diedit)' }}
+          </button>
+          <button
+            type="button"
+            :disabled="mengunduh"
+            class="inline-flex items-center gap-2 rounded-lg border border-emerald-600 bg-white px-3 py-1.5 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+            @click="unduhPdf"
+          >
+            <Download class="h-4 w-4" aria-hidden="true" />
+            {{ mengunduh ? 'Mengunduh…' : 'Unduh PDF' }}
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Kosong -->
     <div v-if="!generating && !hasil && !error" class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-sm text-slate-500">
-      <p>Isi parameter di atas lalu tekan <strong class="text-slate-700">Susun RPP</strong>. Draf akan muncul di sini baris demi baris selagi AI menulis.</p>
+      <p>Isi parameter di atas lalu tekan <strong class="text-slate-700">Susun {{ labelJenis }}</strong>. Draf akan muncul di sini baris demi baris selagi AI menulis.</p>
     </div>
   </div>
 </template>

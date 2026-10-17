@@ -7,6 +7,35 @@ dan versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+### Ditambahkan — Template RPP vs Modul Ajar dipisah + ekspor DOCX/PDF (17 Okt 2026)
+
+Hasil riset: RPP (era K13, turunan silabus/KD) dan Modul Ajar (Kurikulum
+Merdeka, Kepmendikbudristek 56/M/2022, turunan fase/CP/ATP) adalah dokumen
+berbeda — sebelumnya satu template dipakai untuk keduanya.
+
+**Backend (`apps/api/src/rpp/ai/`, `apps/api/src/rpp/dokumen/`):**
+- `rpp-prompt.ts` — `buildRppPrompt` kini menerima `jenis: 'RPP' |
+  'MODUL_AJAR'` (default `RPP`): satu mesin inti (regulasi, 8 Dimensi Profil
+  Lulusan, Pembelajaran Mendalam, diferensiasi, asesmen) dengan dua struktur
+  keluaran — RPP (10 komponen per pertemuan) dan Modul Ajar (Informasi Umum
+  / Komponen Inti / Lampiran; madrasah: Topik Panca Cinta KBC di Informasi
+  Umum). Kedua template ditutup bagian Dasar Hukum.
+- `dto/generate-rpp.dto.ts` — field opsional `jenis` (`RPP`/`MODUL_AJAR`).
+- `export-docx.ts` (BARU) — konverter Markdown → DOCX (library `docx`):
+  heading, bullet/numbered list, tabel, bold/italic, kepala dokumen.
+- `GET /rpp/dokumen/:id/export?format=docx` — unduh DOCX agar bisa diedit
+  ulang (ter-guard, isolasi tenant ikut middleware Prisma).
+
+**Frontend (`apps/web/src/views/rpp/`, `apps/web/src/lib/`):**
+- `RppGenerateView.vue` — dropdown "Jenis dokumen" (RPP/Modul Ajar);
+  tombol, judul default, dan penyimpanan mengikuti jenis yang dipilih
+  (ganti jenis membuang draf lama agar tidak tertukar); tombol **Unduh
+  DOCX** dan **Unduh PDF** setelah dokumen tersimpan.
+- `RppView.vue` — tombol unduh DOCX/PDF di modal detail dokumen.
+- `lib/rpp-export.ts` (BARU) — unduh DOCX via backend + cetak PDF di
+  browser memakai jsPDF/jspdf-autotable (mengikuti pola `lib/pdf.ts`;
+  tanpa beban server).
+
 ### Diperbaiki — Tuning AI RPP: P5/P5-PPRA diganti 8 Dimensi Profil Lulusan + Pembelajaran Mendalam (17 Okt 2026)
 
 Koreksi dari Hades + hasil diskusi nvidia: P5 dan P5-PPRA **sudah tidak berlaku**

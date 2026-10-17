@@ -23,6 +23,11 @@ export class GenerateRppDto {
   @MaxLength(60)
   kurikulum?: string;
 
+  @IsOptional()
+  @IsString()
+  @IsIn(['RPP', 'MODUL_AJAR'])
+  jenis?: string;
+
   @IsString()
   @MaxLength(30)
   jenjang: string;

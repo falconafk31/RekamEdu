@@ -7,6 +7,16 @@ import { denganTenant } from '../common/tenant-data';
 import { CreateDokumenDto } from './dto/create-dokumen.dto';
 import { DokumenQueryDto } from './dto/dokumen-query.dto';
 import { UpdateDokumenDto } from './dto/update-dokumen.dto';
+import { dokumenKeDocx, namaFileAman } from './export-docx';
+
+const LABEL_JENIS: Record<string, string> = {
+  RPP: 'RPP',
+  SILABUS: 'Silabus',
+  MODUL_AJAR: 'Modul Ajar',
+  LKPD: 'LKPD',
+  SOAL: 'Soal',
+  LAINNYA: 'Lainnya',
+};
 
 @Injectable()
 export class DokumenService {
@@ -68,6 +78,33 @@ export class DokumenService {
       throw new NotFoundException('Dokumen tidak ditemukan.');
     }
     return dokumen;
+  }
+
+  // Ekspor dokumen ke DOCX (bisa diedit ulang di Word/WPS/Google Docs).
+  // Isolasi tenant ikut findOne (middleware Prisma).
+  async exportDocx(id: string): Promise<{ buffer: Buffer; namaFile: string }> {
+    const dokumen = await this.findOne(id);
+    const meta = (dokumen.metadata ?? {}) as Record<string, unknown>;
+    const bagian: string[] = [];
+    if (meta['jenjang']) bagian.push(String(meta['jenjang']));
+    if (meta['kelas']) bagian.push(`Kelas ${meta['kelas']}`);
+    if (meta['mapel']) bagian.push(String(meta['mapel']));
+    const tanggal = dokumen.updatedAt.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const subjudul = [
+      LABEL_JENIS[dokumen.jenis] ?? dokumen.jenis,
+      ...bagian,
+      tanggal,
+    ].join(' · ');
+    const buffer = await dokumenKeDocx({
+      judul: dokumen.judul,
+      subjudul,
+      konten: dokumen.konten,
+    });
+    return { buffer, namaFile: namaFileAman(dokumen.judul, 'docx') };
   }
 
   // Setiap update isi/judul menaikkan versi +1 (riwayat versi ringan).

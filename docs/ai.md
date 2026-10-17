@@ -58,11 +58,52 @@ Sumber kebenaran tunggal: `apps/api/src/rpp/ai/master-data.ts`
 - Fungsi `faseUntuk()` memetakan jenjang+kelas ke fase Kurikulum Merdeka
   (A–F) dan disuntik otomatis ke prompt.
 
-## Template prompt bercabang per naungan
+## Template prompt: dua template, satu mesin inti
 
 Builder: `apps/api/src/rpp/ai/rpp-prompt.ts` (`buildRppPrompt`).
 Tuning dilakukan **murni lewat prompt engineering + master data**, tanpa
 fine-tuning model.
+
+Hasil riset (17 Okt 2026): **RPP dan Modul Ajar adalah dokumen berbeda** —
+RPP istilah era K13 (Permendikbud 22/2016, sudah dicabut; turunan
+silabus/KD, format per pertemuan), Modul Ajar istilah resmi Kurikulum
+Merdeka (Kepmendikbudristek 56/M/2022, turunan fase/CP/ATP, format per
+unit/topik). Keduanya berbagi inti wajib yang sama (tujuan–langkah–asesmen),
+sehingga dipakai **dua template dengan satu mesin inti yang sama**:
+
+- **Template RPP** (`jenis=RPP`): 10 komponen — Informasi Umum → CP → TP →
+  ATP → Pemahaman Bermakna → Pertanyaan Pemantik → Kegiatan Pembelajaran
+  (berdiferensiasi: konten/proses/produk; penutup mengaitkan dimensi profil
+  lulusan + saran kokurikuler) → Asesmen formatif & sumatif (+ KKTP, rubrik
+  mencakup sikap/keterampilan sosial) → Pengayaan & Remedial → Refleksi Guru.
+- **Template Modul Ajar** (`jenis=MODUL_AJAR`): struktur Kurikulum Merdeka —
+  **A. Informasi Umum** (identitas, kompetensi awal, target peserta didik,
+  sarpras, model pembelajaran; madrasah: Topik Panca Cinta KBC) →
+  **B. Komponen Inti** (TP, asesmen formatif & sumatif + KKTP, pemahaman
+  bermakna, pertanyaan pemantik, kegiatan pembelajaran, refleksi murid &
+  guru) → **C. Lampiran** (LKPD, pengayaan & remedial, bahan bacaan,
+  glosarium, daftar pustaka).
+- Kedua template ditutup bagian **Dasar Hukum** berisi regulasi acuan.
+- Pemilihan jenis dilakukan guru lewat dropdown "Jenis dokumen" di form
+  generate; backend memvalidasi `jenis` (`RPP`/`MODUL_AJAR`, default `RPP`)
+  dan hasil generate disimpan dengan `jenis` yang sesuai (enum Prisma
+  `JenisDokumen`).
+
+## Ekspor DOCX & PDF
+
+Guru bisa mengunduh dokumen agar bisa diedit ulang / diarsip:
+
+- **DOCX** (bisa diedit): `GET /api/rpp/dokumen/:id/export?format=docx`
+  (ter-guard). Backend mengonversi Markdown → DOCX memakai library `docx`
+  (`apps/api/src/rpp/dokumen/export-docx.ts`): heading, bullet/numbered
+  list, tabel Markdown, bold/italic, plus kepala dokumen (judul + jenis +
+  jenjang/kelas/mapel + tanggal). File dikirim sebagai attachment.
+- **PDF** (arsip/cetak): dibangun **di browser** memakai jsPDF +
+  jspdf-autotable (`apps/web/src/lib/rpp-export.ts`), mengikuti pola
+  `lib/pdf.ts` — tanpa beban tambahan di server/VPS. Mendukung heading,
+  list, tabel, dan bold/italic inline, plus nomor halaman.
+- Tombol unduh tersedia di halaman hasil generate (setelah dokumen
+  tersimpan) dan di modal detail daftar dokumen.
 
 **P5/P5-PPRA sudah dihapus** (koreksi 17 Okt 2026, hasil diskusi nvidia):
 digantikan **8 Dimensi Profil Lulusan** + pendekatan **Pembelajaran Mendalam**
@@ -79,10 +120,5 @@ digantikan **8 Dimensi Profil Lulusan** + pendekatan **Pembelajaran Mendalam**
   ilmu, Gerakan 7 Kebiasaan Anak Indonesia Hebat, Pembelajaran Mendalam),
   CP 008/M/2022 jo. 262/M/2022.
 - Regulasi Kemenag: SKL nasional 8 Dimensi Profil Lulusan (menggantikan
-  P5-PPRA) + KMA 183/184/185/2019 + KMA 347/2022 jo. 450/2024 (Kurikulum
-  Merdeka pada madrasah).
-- Struktur keluaran: Informasi Umum → **CP → TP → ATP** → Pemahaman Bermakna →
-  Pertanyaan Pemantik → Kegiatan Pembelajaran (berdiferensiasi:
-  konten/proses/produk; penutup mengaitkan dimensi profil lulusan + saran
-  kokurikuler) → Asesmen **formatif & sumatif** (+ KKTP, rubrik mencakup
-  sikap/keterampilan sosial) → Pengayaan & Remedial → Refleksi Guru.
+  P5-PPRA) + KMA 183/184/185/2019 + KMA 347/2022 jo. 450/2024 + KMA
+  1503/2025 (Kurikulum Merdeka pada madrasah; KKA mapel pilihan).
