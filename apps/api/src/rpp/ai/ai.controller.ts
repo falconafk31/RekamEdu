@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -26,6 +27,11 @@ import { AiProviderService, baseUrlUntukProvider } from './ai-provider.service';
 import { AiQuotaService } from './ai-quota.service';
 import { GenerateRppDto } from './dto/generate-rpp.dto';
 import { buildRppPrompt } from './rpp-prompt';
+import {
+  KodeNaungan,
+  masterDataUntukKlien,
+  validasiKonteksRpp,
+} from './master-data';
 
 function tenantIdDari(user: RequestUser): string {
   if (!user.tenantId) {
@@ -63,6 +69,13 @@ export class AiController {
     }));
   }
 
+  // Master data naungan → jenjang → mapel (sumber kebenaran tunggal).
+  // Dipakai frontend untuk dropdown berjenjang; TANPA data sensitif.
+  @Get('master-data')
+  masterData() {
+    return { naungan: masterDataUntukKlien() };
+  }
+
   // Generate RPP dengan streaming SSE manual: chunk upstream diteruskan
   // apa adanya ke klien, usage diakumulasi dari baris "data:" terakhir.
   @Post('generate')
@@ -73,6 +86,18 @@ export class AiController {
   ): Promise<void> {
     const user = req.user;
     const tenantId = tenantIdDari(user);
+
+    // (a0) Validasi kombinasi naungan → jenjang → kelas → mapel terhadap
+    // master data (DTO hanya memvalidasi bentuk, bukan isi).
+    const galatKonteks = validasiKonteksRpp(
+      dto.naungan,
+      dto.jenjang,
+      dto.kelas,
+      dto.mapel,
+    );
+    if (galatKonteks.length > 0) {
+      throw new BadRequestException(galatKonteks.join(' '));
+    }
 
     // (a) Kuota: ForbiddenException -> Nest mengubah jadi respons 403 JSON.
     const plan = await this.quota.planForTenant(tenantId);
@@ -102,6 +127,8 @@ export class AiController {
     }
 
     const { system, user: promptUser } = buildRppPrompt({
+      naungan: dto.naungan as KodeNaungan,
+      kurikulum: dto.kurikulum,
       jenjang: dto.jenjang,
       kelas: dto.kelas,
       mapel: dto.mapel,

@@ -7,6 +7,37 @@ dan versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [Unreleased]
 
+### Ditambahkan — Tuning AI RPP: master data naungan/jenjang/mapel + template prompt bercabang
+
+Tanpa fine-tuning model — murni prompt engineering + master data.
+
+**Backend (`apps/api/src/rpp/ai/`):**
+- `master-data.ts` (BARU) — sumber kebenaran tunggal naungan → jenjang →
+  mapel: `kemendikdasmen` (SD/SMP/SMA/SMK) dan `kemenag` (MI/MTs/MA, plus
+  mapel agama: Al-Qur'an Hadits, Akidah Akhlak, Fikih, SKI, Bahasa Arab per
+  KMA 183/2019); daftar kelas valid per jenjang; fungsi validasi
+  `validasiKonteksRpp()` dan pemetaan fase Kurikulum Merdeka `faseUntuk()`.
+- `rpp-prompt.ts` — builder prompt bercabang per naungan: menyuntik naungan,
+  kurikulum, fase, regulasi acuan (Kemendikdasmen: Permendikbudristek 12/2024,
+  CP 008/M/2022 jo. 262/M/2022, P5 009/M/2022; Kemenag: KMA 183/184/185/2019,
+  KMA 347/2022 jo. 450/2024, P5-PPRA + kekhasan mapel agama); struktur
+  keluaran CP → TP → ATP, pembelajaran berdiferensiasi, asesmen formatif &
+  sumatif + KKTP.
+- `dto/generate-rpp.dto.ts` — field baru `naungan` (`kemendikdasmen`/`kemenag`,
+  wajib) dan `kurikulum` (opsional).
+- `ai.controller.ts` — endpoint baru `GET /rpp/ai/master-data` (ter-guard);
+  `POST /rpp/ai/generate` memvalidasi kombinasi naungan → jenjang → kelas →
+  mapel terhadap master data (400 bila tidak cocok) sebelum memanggil AI.
+
+**Frontend (`apps/web/src/views/rpp/RppGenerateView.vue`):**
+- Form memakai dropdown berjenjang dari master data (naungan → jenjang →
+  kelas → mapel); ganti induk me-reset turunan; kurikulum ditampilkan read-only
+  mengikuti naungan; `naungan`/`kurikulum` dikirim ke endpoint generate dan
+  disimpan di metadata dokumen.
+
+**Dokumentasi:** `docs/ai.md` — seksi baru "Master data" dan "Template prompt
+bercabang per naungan".
+
 ### Ditambahkan — Tahap 2+3: Modul 2 (Jurnal), Modul 3 (RPP+AI), Modul 5 (Surat), Dashboard Owner
 
 **Database (`apps/api/prisma/`):**

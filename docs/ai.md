@@ -35,3 +35,38 @@ menyentuh API key.
   mencegah satu sekolah menghabiskan kuota bersama.
 - Batas kuota bulanan per paket dicek terhadap `ai_usage_logs` sebelum request diteruskan
   ke provider; jika kuota habis, API mengembalikan `429` dengan pesan Bahasa Indonesia.
+
+## Master data naungan → jenjang → mapel
+
+Sumber kebenaran tunggal: `apps/api/src/rpp/ai/master-data.ts`
+(**jangan** hardcode daftar mapel di komponen frontend).
+
+- **Naungan**: `kemendikdasmen` (Sekolah Umum: SD/SMP/SMA/SMK) dan
+  `kemenag` (Madrasah: MI/MTs/MA). Madrasah menambahkan mapel agama
+  (Al-Qur'an Hadits, Akidah Akhlak, Fikih, SKI, Bahasa Arab) sesuai KMA 183/2019.
+- Backend mengekspos `GET /api/rpp/ai/master-data` (ter-guard seperti endpoint
+  AI lain); frontend memakai respons ini untuk dropdown berjenjang
+  naungan → jenjang → kelas → mapel.
+- Backend memvalidasi kombinasi `naungan → jenjang → kelas → mapel` terhadap
+  master data sebelum generate (`validasiKonteksRpp`); kombinasi salah
+  ditolak dengan `400` dan pesan Bahasa Indonesia.
+- Fungsi `faseUntuk()` memetakan jenjang+kelas ke fase Kurikulum Merdeka
+  (A–F) dan disuntik otomatis ke prompt.
+
+## Template prompt bercabang per naungan
+
+Builder: `apps/api/src/rpp/ai/rpp-prompt.ts` (`buildRppPrompt`).
+Tuning dilakukan **murni lewat prompt engineering + master data**, tanpa
+fine-tuning model.
+
+- System prompt menyuntik: naungan, kurikulum, fase, regulasi acuan per naungan,
+  dan kekhasan madrasah (untuk mapel rumpun PAI/Bahasa Arab).
+- Regulasi Kemendikdasmen: Permendikbudristek 12/2024, Kepmendikbudristek
+  008/M/2022 jo. 262/M/2022 (CP), Kepmendikbudristek 009/M/2022 (P5).
+- Regulasi Kemenag: KMA 183/184/185/2019, KMA 347/2022 jo. KMA 450/2024
+  (Kurikulum Merdeka pada madrasah), P5-PPRA (Profil Pelajar Pancasila +
+  Rahmatan lil 'Alamin) sebagai pengganti P5.
+- Struktur keluaran: Informasi Umum → **CP → TP → ATP** → Pemahaman Bermakna →
+  Pertanyaan Pemantik → Kegiatan Pembelajaran (berdiferensiasi:
+  konten/proses/produk) → Asesmen **formatif & sumatif** (+ KKTP) →
+  Pengayaan & Remedial → Refleksi Guru.

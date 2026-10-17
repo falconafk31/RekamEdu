@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -12,6 +13,15 @@ export class GenerateRppDto {
   @IsString()
   @MinLength(1)
   aiModelId: string;
+
+  @IsString()
+  @IsIn(['kemendikdasmen', 'kemenag'])
+  naungan: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  kurikulum?: string;
 
   @IsString()
   @MaxLength(30)

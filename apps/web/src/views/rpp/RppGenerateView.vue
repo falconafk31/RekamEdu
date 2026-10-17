@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   ArrowLeft, Sparkles, Save, TriangleAlert,
@@ -19,6 +19,25 @@ interface AiModel {
   displayName: string
 }
 
+interface JenjangMaster {
+  kode: string
+  nama: string
+  kelas: string[]
+  mapel: string[]
+}
+
+interface NaunganMaster {
+  kode: string
+  label: string
+  kurikulum: string
+  labelProjekProfil: string
+  jenjang: JenjangMaster[]
+}
+
+interface MasterDataResponse {
+  naungan: NaunganMaster[]
+}
+
 interface SseChunk {
   type?: string
   message?: string
@@ -27,7 +46,6 @@ interface SseChunk {
   choices?: Array<{ delta?: { content?: string } }>
 }
 
-const JENJANG = ['SD', 'SMP', 'SMA', 'SMK']
 const MODEL_PEMBELAJARAN = [
   'Problem Based Learning',
   'Project Based Learning',
@@ -39,8 +57,11 @@ const MODEL_PEMBELAJARAN = [
 
 const models = ref<AiModel[]>([])
 const loadingModels = ref(false)
+const master = ref<NaunganMaster[]>([])
+const loadingMaster = ref(false)
 
 const aiModelId = ref('')
+const naungan = ref('')
 const jenjang = ref('')
 const kelas = ref('')
 const mapel = ref('')
@@ -61,11 +82,33 @@ const saving = ref(false)
 const saveError = ref('')
 const tersimpan = ref(false)
 
+const naunganAktif = computed(() => master.value.find((n) => n.kode === naungan.value))
+const daftarJenjang = computed(() => naunganAktif.value?.jenjang ?? [])
+const daftarKelas = computed(
+  () => daftarJenjang.value.find((j) => j.kode === jenjang.value)?.kelas ?? [],
+)
+const daftarMapel = computed(
+  () => daftarJenjang.value.find((j) => j.kode === jenjang.value)?.mapel ?? [],
+)
+const kurikulumAktif = computed(() => naunganAktif.value?.kurikulum ?? '')
+
+// Dropdown berjenjang: ganti induk → reset turunan.
+watch(naungan, () => {
+  jenjang.value = ''
+  kelas.value = ''
+  mapel.value = ''
+})
+watch(jenjang, () => {
+  kelas.value = ''
+  mapel.value = ''
+})
+
 const formValid = computed(() =>
   aiModelId.value !== '' &&
+  naungan.value !== '' &&
   jenjang.value !== '' &&
-  kelas.value.trim() !== '' &&
-  mapel.value.trim() !== '' &&
+  kelas.value !== '' &&
+  mapel.value !== '' &&
   materiPokok.value.trim() !== '',
 )
 
@@ -78,6 +121,18 @@ async function loadModels() {
     error.value = pesanError(e)
   } finally {
     loadingModels.value = false
+  }
+}
+
+async function loadMaster() {
+  loadingMaster.value = true
+  try {
+    const data = await api<MasterDataResponse>('/rpp/ai/master-data')
+    master.value = data.naungan
+  } catch (e) {
+    error.value = `Gagal memuat master data jenjang/mapel: ${pesanError(e)}`
+  } finally {
+    loadingMaster.value = false
   }
 }
 
@@ -119,7 +174,7 @@ async function generate() {
   tersimpan.value = false
   saveError.value = ''
   generating.value = true
-  judulSimpan.value = `RPP ${mapel.value.trim()} - ${materiPokok.value.trim()}`.slice(0, 200)
+  judulSimpan.value = `RPP ${mapel.value} - ${materiPokok.value.trim()}`.slice(0, 200)
   aborter.value = new AbortController()
 
   try {
@@ -131,9 +186,11 @@ async function generate() {
       },
       body: JSON.stringify({
         aiModelId: aiModelId.value,
+        naungan: naungan.value,
+        kurikulum: kurikulumAktif.value || undefined,
         jenjang: jenjang.value,
-        kelas: kelas.value.trim(),
-        mapel: mapel.value.trim(),
+        kelas: kelas.value,
+        mapel: mapel.value,
         materiPokok: materiPokok.value.trim(),
         modelPembelajaran: modelPembelajaran.value || undefined,
         durasiMenit: durasiMenit.value ?? undefined,
@@ -198,9 +255,11 @@ async function simpan() {
         konten: hasil.value,
         status: 'DRAFT',
         metadata: {
+          naungan: naungan.value,
+          kurikulum: kurikulumAktif.value || undefined,
           jenjang: jenjang.value,
-          kelas: kelas.value.trim(),
-          mapel: mapel.value.trim(),
+          kelas: kelas.value,
+          mapel: mapel.value,
           modelPembelajaran: modelPembelajaran.value || undefined,
           durasiMenit: durasiMenit.value ?? undefined,
         },
@@ -215,7 +274,10 @@ async function simpan() {
   }
 }
 
-onMounted(loadModels)
+onMounted(() => {
+  void loadMaster()
+  void loadModels()
+})
 </script>
 
 <template>
@@ -254,19 +316,32 @@ onMounted(loadModels)
           <p v-if="!loadingModels && models.length === 0" class="mt-1 text-xs text-amber-700">Tidak ada model AI yang diizinkan untuk paket sekolah ini.</p>
         </div>
         <div>
+          <label for="g-naungan" class="mb-1 block text-xs font-semibold text-slate-600">Naungan *</label>
+          <select id="g-naungan" v-model="naungan" :disabled="generating || loadingMaster" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
+            <option value="" disabled>{{ loadingMaster ? 'Memuat…' : 'Pilih naungan…' }}</option>
+            <option v-for="n in master" :key="n.kode" :value="n.kode">{{ n.label }}</option>
+          </select>
+        </div>
+        <div>
           <label for="g-jenjang" class="mb-1 block text-xs font-semibold text-slate-600">Jenjang *</label>
-          <select id="g-jenjang" v-model="jenjang" :disabled="generating" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
-            <option value="" disabled>Pilih jenjang…</option>
-            <option v-for="j in JENJANG" :key="j" :value="j">{{ j }}</option>
+          <select id="g-jenjang" v-model="jenjang" :disabled="generating || !naungan" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
+            <option value="" disabled>{{ naungan ? 'Pilih jenjang…' : 'Pilih naungan dulu…' }}</option>
+            <option v-for="j in daftarJenjang" :key="j.kode" :value="j.kode">{{ j.kode }} — {{ j.nama }}</option>
           </select>
         </div>
         <div>
           <label for="g-kelas" class="mb-1 block text-xs font-semibold text-slate-600">Kelas *</label>
-          <input id="g-kelas" v-model="kelas" :disabled="generating" placeholder="mis. 4 / VII / X" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100" />
+          <select id="g-kelas" v-model="kelas" :disabled="generating || !jenjang" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
+            <option value="" disabled>{{ jenjang ? 'Pilih kelas…' : 'Pilih jenjang dulu…' }}</option>
+            <option v-for="k in daftarKelas" :key="k" :value="k">{{ k }}</option>
+          </select>
         </div>
         <div>
           <label for="g-mapel" class="mb-1 block text-xs font-semibold text-slate-600">Mata pelajaran *</label>
-          <input id="g-mapel" v-model="mapel" :disabled="generating" placeholder="mis. Matematika" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100" />
+          <select id="g-mapel" v-model="mapel" :disabled="generating || !jenjang" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100">
+            <option value="" disabled>{{ jenjang ? 'Pilih mata pelajaran…' : 'Pilih jenjang dulu…' }}</option>
+            <option v-for="m in daftarMapel" :key="m" :value="m">{{ m }}</option>
+          </select>
         </div>
         <div class="sm:col-span-2">
           <label for="g-materi" class="mb-1 block text-xs font-semibold text-slate-600">Materi pokok *</label>
@@ -282,6 +357,11 @@ onMounted(loadModels)
         <div>
           <label for="g-durasi" class="mb-1 block text-xs font-semibold text-slate-600">Durasi (menit)</label>
           <input id="g-durasi" v-model.number="durasiMenit" :disabled="generating" type="number" min="10" max="600" placeholder="mis. 70" class="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:bg-slate-100" />
+        </div>
+        <div class="sm:col-span-2">
+          <label for="g-kurikulum" class="mb-1 block text-xs font-semibold text-slate-600">Kurikulum</label>
+          <input id="g-kurikulum" :value="kurikulumAktif || '—'" disabled class="w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-600" />
+          <p class="mt-1 text-xs text-slate-400">Kurikulum mengikuti naungan yang dipilih.</p>
         </div>
         <div class="sm:col-span-2">
           <label for="g-tujuan" class="mb-1 block text-xs font-semibold text-slate-600">Tujuan / catatan tambahan</label>
